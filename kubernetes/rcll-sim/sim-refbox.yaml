@@ -1,0 +1,79 @@
+# Headless service for Gazebo simulation
+apiVersion: v1
+kind: Service
+metadata:
+  name: gazebo
+spec:
+  selector:
+    simulation: rcll
+  clusterIP: None
+  ports:
+  - port: 1
+---
+# Headless service for Referee Box
+apiVersion: v1
+kind: Service
+metadata:
+  name: refbox
+spec:
+  selector:
+    refbox: rcll
+  clusterIP: None
+  ports:
+  - port: 4444
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rcll-sim
+  labels:
+    refbox: rcll
+    simulation: rcll
+spec:
+  hostname: rcll-sim
+  containers:
+    - name: gazebo
+      image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+      imagePullPolicy: Always
+      command: ["/opt/rcll-sim/run-component"]
+      args: ["gazebo"]
+      env:
+      - name: USE_DEFAULT_WORLD
+        value: "true"
+      readinessProbe:
+        exec:
+          command: ["sh", "-c", "gz topic -l | grep time-sync"]
+        initialDelaySeconds: 10
+        failureThreshold: 15
+    - name: refbox
+      image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+      command: ["/opt/rcll-sim/run-component"]
+      args: ["refbox"]
+    - name: comm-proxy
+      image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+      command: ["/opt/rcll-sim/run-component"]
+      args: ["fawkes"]
+      env:
+      - name: META_PLUGIN
+        value: gazsim-organization
+      - name: LOG_LEVEL
+        value: debug
+      readinessProbe:
+        tcpSocket:
+          port: 1910
+        initialDelaySeconds: 10
+        failureThreshold: 10
+    - name: run-game
+      image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+      command: ["/opt/rcll-sim/run-component"]
+      args: ["run-game"]
+      env:
+      - name: TEAM_CYAN
+        value: Carologistics
+      - name: TEAM_MAGENTA
+        value: A-Team
+      - name: ROBOTS
+        value: C-R1
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never

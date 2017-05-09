@@ -1,0 +1,87 @@
+# Headless service for robot Pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: robot-c1
+spec:
+  selector:
+    app: fawkes
+    robot: C-R1
+  clusterIP: None
+  ports:
+  - port: 1
+---
+# Service for Fawkes on that robot
+apiVersion: v1
+kind: Service
+metadata:
+  name: fawkes-c1
+spec:
+  selector:
+    app: fawkes
+    robot: C-R1
+  ports:
+  - port: 1921
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: robot-pod
+  labels:
+    robot: C-R1
+    app: fawkes
+  annotations:
+    pod.beta.kubernetes.io/init-containers: '[
+        {
+          "name": "wait-for-gazebo",
+          "image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic",
+          "imagePullPolicy": "Always",
+          "command": ["/opt/rcll-sim/wait-service"],
+          "args": ["gazebo"],
+          "env": [
+            {
+              "name": "NUM_TRIES",
+              "value": "30"
+            }
+          ]
+        },
+        {
+          "name": "wait-for-refbox",
+          "image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic",
+          "imagePullPolicy": "IfNotPresent",
+          "command": ["/opt/rcll-sim/wait-service"],
+          "args": ["refbox"]
+        }
+      ]'
+spec:
+  containers:
+  - name: roscore
+    image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+    command: ["/opt/rcll-sim/run-component"]
+    args: ["roscore"]
+  - name: fawkes
+    image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+    imagePullPolicy: Always
+    command: ["/opt/rcll-sim/run-component"]
+    args: ["fawkes"]
+    env:
+    - name: CONFIG
+      value: gazsim-configurations/default/robotino1.yaml
+    - name: META_PLUGIN
+      value: gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-meta-agent,gazsim-navgraph-generator
+    - name: LOG_LEVEL
+      value: debug
+    - name: GAZEBO_MASTER_URI
+      value: http://gazebo:11345
+
+  - name: localize-robot
+    image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic
+    command: ["/opt/rcll-sim/localize-robot"]
+    args: ["C-R1"]
+    env:
+    - name: REMOTE
+      value: localhost:1921
+
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never
