@@ -14,35 +14,36 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongo
+  name: mongodb
   labels:
-    name: mongo
+    name: mongodb
     replica-set: rs0
 spec:
   ports:
-  - port: 27017
+  - name: mongodb
+    port: 27017
     targetPort: 27017
   clusterIP: None
   selector:
-    role: mongo
+    role: mongodb
     replica-set: rs0
 ---
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
-  name: mongo
+  name: mongodb
 spec:
-  serviceName: "mongo"
+  serviceName: mongodb
   replicas: 1
   template:
     metadata:
       labels:
-        role: mongo
+        role: mongodb
         replica-set: rs0
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-        - name: mongo
+        - name: mongodb
           image: mongo
           command:
             - mongod
@@ -55,11 +56,11 @@ spec:
           volumeMounts:
             - name: mongo-persistent-storage
               mountPath: /data/db
-        - name: mongo-sidecar
+        - name: mongodb-sidecar
           image: cvallance/mongo-k8s-sidecar
           env:
             - name: MONGO_SIDECAR_POD_LABELS
-              value: "role=mongo,replica-set=rs0"
+              value: "role=mongodb,replica-set=rs0"
   volumeClaimTemplates:
   - metadata:
       name: mongo-persistent-storage
