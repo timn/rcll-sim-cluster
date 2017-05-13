@@ -5,44 +5,53 @@ import os
 
 from work_queue import WorkQueue
 from pod_controller import PodController
+from config import Configuration
 
-class Configuration(object):
-	def __init__(self):
-		self.mongodb_uri = self.value("MONGODB_URI", "mongodb://localhost:27017/")
-		self.mongodb_rs = self.value("MONGODB_RS")
-		self.mongodb_host = self.value("MONGODB_HOST")
-		self.mongodb_port = self.value("MONGODB_PORT")
-		self.mongodb_queue_db = self.value("MONGODB_QUEUE_DB", "workqueue")
-		self.mongodb_queue_col = self.value("MONGODB_QUEUE_COLLECTION", "q")
-		self.mongodb_rs_srv = self.value("MONGODB_RS_SRV")
-		self.template_path = self.value("TEMPLATE_PATH", "/opt/rcll-sim/templates")
-
-	def value(self, key, default=None):
-		if key in os.environ:
-			return os.environ[key]
-		else:
-			return default
-
-        
 class SimController(object):
 	def __init__(self, config):
 		self.config	 = config
 
 		# The work queue will figure out a valid combination of MongoDB access
 		# parameters, e.g., host/port, URI, or replica set discovery via DNS
-		self.queue = WorkQueue(host=self.config.mongodb_host,
-							   port=self.config.mongodb_port,
-							   uri=self.config.mongodb_uri,
-							   srv_name=self.config.mongodb_rs_srv,
-							   database=self.config.mongodb_queue_db,
-							   replicaset=self.config.mongodb_rs,
-							   collection=self.config.mongodb_queue_col)
+		self.wq = WorkQueue(host=self.config.mongodb_host,
+		                    port=self.config.mongodb_port,
+		                    uri=self.config.mongodb_uri,
+		                    srv_name=self.config.mongodb_rs_srv,
+		                    database=self.config.mongodb_queue_db,
+		                    replicaset=self.config.mongodb_rs,
+		                    collection=self.config.mongodb_queue_col)
 
-		self.podctrl = PodController(self.config, self.queue)
+		self.podctrl = PodController(self.config)
+
+		# Create this controllers namespace
+		# Assume namespace has been created as part of the invoking pod
+		# self.podctrl.create_namespace(config.kube_namespace)
+
+	def run(self):
+		job = self.wq.get_next_item()
+		while job is not None:
+			print("Running job %s" % job["name"])
+			for i in job["params"]["elements"]:
+				i["vars"]["namespace"] = config.kube_namespace
+				print("  - template: %s" % i["template"])
+				sufficient_containers = i["sufficient_containers"] if "sufficient_containers" in i else []
+				items = self.podctrl.create_from_template(i["template"], i["vars"],
+				                                          sufficient_containers=sufficient_containers)
+				for i in items:
+					print("    - %s: %s" % i)
+			if self.podctrl.monitor_pods():
+				print("Job %s completed successfully" % job["name"])
+				self.wq.mark_item_done(job["name"])
+			else:
+				print("Job %s failed, reqeueing" % job["name"])
+				self.wq.requeue_item(job["name"])
+			# Cleanup removing pods, services
+			self.podctrl.delete_all()
+			job = self.wq.get_next_item()
+		print("No more open jobs")
 
 if __name__ == '__main__':
 	config = Configuration()
 	sim_ctrl = SimController(config)
 
-	#sim_ctrl.create_pod(pod1)
-	#sim_ctrl.monitor_pods()
+	sim_ctrl.run()
