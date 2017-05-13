@@ -33,24 +33,17 @@ metadata:
   annotations:
     pod.beta.kubernetes.io/init-containers: '[
         {
-          "name": "wait-for-gazebo",
+          "name": "wait-for-rcll-sim",
           "image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic",
           "imagePullPolicy": "Always",
-          "command": ["/opt/rcll-sim/wait-service"],
-          "args": ["gazebo"],
+          "command": ["/opt/rcll-sim/wait-services"],
+          "args": ["gazebo", "refbox"],
           "env": [
             {
-              "name": "NUM_TRIES",
+              "name": "MAX_TRIES",
               "value": "30"
             }
           ]
-        },
-        {
-          "name": "wait-for-refbox",
-          "image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic",
-          "imagePullPolicy": "IfNotPresent",
-          "command": ["/opt/rcll-sim/wait-service"],
-          "args": ["refbox"]
         }
       ]'
 spec:
