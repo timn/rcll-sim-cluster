@@ -15,16 +15,32 @@ metadata:
   name: gzweb
   labels:
     app: gzweb
+  annotations:
+    pod.beta.kubernetes.io/init-containers: '[
+        {
+          "name": "wait-for-gazebo",
+          "image": "defiant.kbsg.rwth-aachen.de:5000/timn/gzweb:7",
+          "imagePullPolicy": "Always",
+          "command": ["/opt/gzweb/wait-services"],
+          "args": ["gazebo"],
+          "env": [
+            {
+              "name": "NUM_TRIES",
+              "value": "30"
+            }
+          ]
+        }
+      ]'
 spec:
   hostname: gzweb
   containers:
     - name: gzweb
       image: defiant.kbsg.rwth-aachen.de:5000/timn/gzweb:7
-      #imagePullPolicy: Always
+      imagePullPolicy: Always
       env:
       - name: GAZEBO_MASTER_URI
         value: http://gazebo:11345
-      command: ["bash", "-c", "/root/gzweb/start_gzweb.sh && sleep infinity"]
+      command: ["/opt/gzweb/run-gzweb"]
   imagePullSecrets:
     - name: regsecret
   restartPolicy: Never
