@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rcll-sim-ctrl-dev
+  labels:
+    app: rcll-sim-ctrl-dev
+spec:
+  containers:
+    - name: rcll-sim-ctrl-dev
+      image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim-ctrl:latest
+      command: ["bash"]
+      args: ["-c", "chmod 700 /root/.ssh; /usr/libexec/openssh/sshd-keygen ecdsa && /usr/sbin/sshd -D"]
+      volumeMounts:
+      - name: ssh-authkeys
+        mountPath: /root/.ssh
+  volumes:
+  - name: ssh-authkeys
+    configMap:
+      name: ssh-authkeys-timn
+      items:
+      - key: authkeys
+        path: authorized_keys
+        mode: 0600
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: rcll-sim-ctrl-dev
+  name: rcll-sim-ctrl-dev
+spec:
+  type: NodePort
+  ports:
+  - port: 22
+    nodePort: 12400
+    #targetPort: 22
+  selector:
+    app: rcll-sim-ctrl-dev
+
