@@ -8,8 +8,14 @@ spec:
   containers:
     - name: rcll-sim-ctrl-dev
       image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim-ctrl:latest
+      imagePullPolicy: Always
       command: ["bash"]
       args: ["-c", "chmod 700 /root/.ssh; /usr/libexec/openssh/sshd-keygen ecdsa && /usr/sbin/sshd -D"]
+      env:
+      - name: MONGODB_RS
+        value: rs0
+      - name: MONGODB_RS_SRV
+        value: _mongodb._tcp.mongodb
       volumeMounts:
       - name: ssh-authkeys
         mountPath: /root/.ssh
