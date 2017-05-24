@@ -3,14 +3,17 @@ import kubernetes
 from kubernetes.client import V1Container, V1DeleteOptions, V1ObjectMeta, V1Pod, V1PodSpec
 from kubernetes.watch import Watch
 from kubernetes.client.rest import ApiException
+from kubernetes.client.api_client import ApiClient
 
 import jinja2
 import yaml
+import json
 
 class PodController(object):
 	def __init__(self, config):
 		self.kube_config = kubernetes.config.load_incluster_config()
 		self.core_api = kubernetes.client.CoreV1Api()
+		self.beta1_api = kubernetes.client.ExtensionsV1beta1Api()
 		self.pods = {}
 		self.services = {}
 
@@ -43,15 +46,16 @@ class PodController(object):
 		rv.append(("yamldoc", template_name, yamldoc))
 		manifests = yaml.load_all(yamldoc)
 		for manifest in manifests:
+			print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
 			if manifest["kind"] == "Pod":
-				print("Creating Pod '%s'" % manifest["metadata"]["name"])
+				#print("Creating Pod '%s'" % manifest["metadata"]["name"])
 				self.create_pod(manifest, sufficient_containers=sufficient_containers)
 				s = ",".join(["{}{}".format("*" if c["name"] in sufficient_containers else "", c["name"])
 				              for c in manifest["spec"]["containers"]])
 				rv.append((manifest["kind"], manifest["metadata"]["name"] + " (" + s + ")", manifest))
 
 			elif manifest["kind"] == "Service":
-				print("Creating Service '%s'" % manifest["metadata"]["name"])
+				#print("Creating Service '%s'" % manifest["metadata"]["name"])
 				self.create_service(manifest)
 				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
@@ -81,8 +85,12 @@ class PodController(object):
 													  body=manifest)
 			self.pods[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
 				{ "phase": "Requested",
+				  "status": "Requested",
 				  "manifest": manifest,
-				  "sufficient_containers": sufficient_containers }
+				  "sufficient_containers": sufficient_containers,
+				  "total": 0,
+				  "ready": 0,
+				}
 		except ApiException as e:
 			print("Failed to create pod %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 														manifest["metadata"]["name"], e))
@@ -100,20 +108,22 @@ class PodController(object):
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
 		core_api_del = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient())
+		print("Deleting items")
 		for uid in self.pods:
-			print("Deleting pod %s:%s" % uid)
+			print("  - Pod %s:%s" % uid)
 			res = core_api_del.delete_namespaced_pod(namespace = uid[0],
 			                                         name = uid[1],
 			                                         body = V1DeleteOptions())
 
 		for uid in self.services:
-			print("Deleting service %s:%s" % uid)
+			print("  - Service %s:%s" % uid)
 			res = core_api_del.delete_namespaced_service(namespace = uid[0], name = uid[1])
 
 		# Not checking for possibly deleted pods, pods take a while to
 		# delete and they will not be listed anymore
 
-		print("Waiting for pods to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
+		print("Waiting for pod and service deletion")
+		#print("Waiting for pods to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
 		current_pods = [(i.metadata.namespace, i.metadata.name)
 		                for i in core_api_del.list_pod_for_all_namespaces().items]
 		print("Current pods: %s" % ', '.join(["%s:%s" % uid for uid in current_pods]))
@@ -131,7 +141,7 @@ class PodController(object):
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
 				if etype == "DELETED" and uid in self.pods:
-					print("  - %s:%s" % uid)
+					print("  - Pod %s:%s" % uid)
 					del self.pods[uid]
 					if not self.pods: w.stop()
 		print("Done deleting pods")
@@ -150,6 +160,7 @@ class PodController(object):
 		# but there seems to be no "query and keep watching" API that could
 		# prevent that.
 
+		#print("Waiting for services to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
 		while self.services:
 			print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
 			w = Watch()
@@ -158,15 +169,15 @@ class PodController(object):
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
 				if etype == "DELETED" and uid in self.services:
-					print("  - %s:%s" % uid)
+					print("  - Service %s:%s" % uid)
 					del self.services[uid]
 					if not self.services: w.stop()
-		print("Done deleting services")
+		#print("Done deleting services")
 
 	def monitor_pods(self):
-		success=True
 		# Wrap watch in outer loop, it might get interrupted before we
 		# are finished looking
+		printed_all_up=False
 		while self.pods:
 			w = Watch()
 			for event in w.stream(self.core_api.list_pod_for_all_namespaces):
@@ -174,20 +185,86 @@ class PodController(object):
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
 				if uid in self.pods:
-					print("Event: %s %s %s" % (etype, object.metadata.name, object.status.phase))
-				
 					if etype == "MODIFIED":
-						#print("  %s" % object)
+
+						#print("************************************\n%s %s\n%s" \
+						#      % (etype, object.metadata.name, object))
+
+						ready = 0
+						total = len(object.spec.containers)
+						pod_name_ip = "n/a"
+						status = object.status.phase
+						if object.status.reason is not None:
+							status = object.status.reason
+						if object.spec.node_name and object.spec.node_name != "":
+							pod_name_ip = object.spec.node_name
+						if object.status.pod_ip and object.status.pod_ip != "":
+							pod_name_ip += "/" + object.status.pod_ip
+
+						initializing = False
+
+						# On Kubernetes 1.5, get init container status out of the annotation manually
+						if not object.status.init_container_statuses \
+						   and object.metadata.annotations \
+						   and "pod.alpha.kubernetes.io/init-container-statuses" in object.metadata.annotations:
+							jp = json.loads(object.metadata.annotations["pod.alpha.kubernetes.io/init-containers"])
+							js = json.loads(object.metadata.annotations["pod.alpha.kubernetes.io/init-container-statuses"])
+							a = ApiClient()
+							object.spec.init_containers = \
+							    a._ApiClient__deserialize(jp, "list[V1Container]")
+							object.status.init_container_statuses = \
+							    a._ApiClient__deserialize(js, "list[V1ContainerStatus]")
+
+						if object.status.init_container_statuses is not None:
+							for i, cs in enumerate(object.status.init_container_statuses):
+								if cs.state.terminated and cs.state.terminated.exit_code == 0:
+									continue
+								elif cs.state.terminated:
+									if len(cs.state.terminated.reason) == 0:
+										if cs.state.terminated.signal != 0:
+											status = "Init:Signal:%d" % cs.state.terminated.signal
+										else:
+											status = "Init:ExitCode:%d" % cs.state.terminated.exit_code
+									else:
+										status = "Init:" + cs.state.terminated.reason
+									initializing = True
+								elif cs.state.waiting and len(cs.state.waiting.reason) > 0 \
+								     and cs.state.waiting.reason != "PodInitializing":
+									status = "Init:" + cs.state.waiting.reason
+									initializing = True
+								else:
+									status = "Init:%d/%d" % (i, len(object.spec.init_containers))
+									initializing = True
+								break
+
+						if not initializing and object.status.container_statuses is not None:
+							for cs in object.status.container_statuses:
+								if cs.ready: ready += 1
+								if cs.state.waiting and cs.state.waiting.reason != "":
+									status = cs.state.waiting.reason
+								elif cs.state.terminated and cs.state.terminated.reason != "":
+									status = cs.state.terminated.reason
+								elif cs.state.terminated and cs.state.terminated.reason == "":
+									if cs.state.terminated.signal != 0:
+										status = "Signal:%d" % cs.state.terminated.signal
+									else:
+										statis = "ExitCode:%d" % cs.state.terminated.exit_code
+
+						print(" - %-20s %-18s %d/%d  %s" \
+						      % (object.metadata.name, status, ready, total, pod_name_ip))
+
 						self.pods[uid]["phase"] = object.status.phase
+						self.pods[uid]["status"] = status
+						self.pods[uid]["ready"] = ready
+						self.pods[uid]["total"] = total
 						if ((object.status.phase == "Succeeded" or object.status.phase == "Failed")
 						    and object.metadata.deletion_timestamp == None):
 
-							if not success_determined:
-								if object.status.phase == "Failed":
-									return False
+							if object.status.phase == "Failed":
+								return False
 
-							print("Pod %s/%s is finished" % (object.metadata.namespace, object.metadata.name))
-							self.delete_all()
+							#print("Pod %s/%s is finished" % (object.metadata.namespace, object.metadata.name))
+							#self.delete_all()
 
 						if object.status.container_statuses is not None:
 							for c in filter(lambda c: c.state.terminated, object.status.container_statuses):
@@ -210,5 +287,16 @@ class PodController(object):
 						if not self.pods:
 							w.stop()
 							print("Done watching events")
+
+				if not printed_all_up:
+					all_up = True
+					for k, p in self.pods.items():
+						if p["status"] != "Running":
+							all_up = False
+						if p["ready"] != p["total"]:
+							all_up = False
+					if all_up:
+						printed_all_up = True
+						print("All pods up and running")
 
 		return True
