@@ -1,0 +1,139 @@
+{%- for r in robots %}
+# Headless service for agent Pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-{{ team.color[0]|lower }}{{ loop.index }}
+  namespace: {{ namespace }}
+spec:
+  selector:
+    app: ros
+    robot: central
+  clusterIP: None
+  ports:
+  - port: 1
+---
+{%- endfor %}
+# Service for central ROS core
+apiVersion: v1
+kind: Service
+metadata:
+  name: rosmaster
+  namespace: {{ namespace }}
+spec:
+  selector:
+    app: ros
+    robot: central
+  type: ClusterIP
+  ports:
+  - port: {{ ros.port }}
+---
+# Service for pod host (to be able to resolve hostname)
+# Not using a sub-domain here as we only care about a single pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: rcll-sim-ros
+  namespace: {{ namespace }}
+spec:
+  selector:
+    app: ros
+    robot: central
+  clusterIP: None
+  ports:
+  - port: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rcll-sim-ros
+  namespace: {{ namespace }}
+  labels:
+    app: ros
+    robot: central
+spec:
+  hostname: rcll-sim-ros
+
+  volumes:
+  - name: shared-navgraph
+    emptyDir: {}
+
+  containers:
+  - name: roscore
+    image: {{ rcll_sim_ros_image }}
+    #imagePullPolicy: Always
+    command: ["/opt/ros/run-env"]
+    args: ["roscore"]
+    env:
+    - name: ROS_MASTER_URI
+      value: http://localhost:{{ ros.port }}
+
+  - name: roslaunch-integration
+    image: {{ rcll_sim_ros_image }}
+    #imagePullPolicy: Always
+    command: ["/opt/ros/run-env"]
+    args: ["roslaunch", "--wait", "--screen", "--skip-log-check", "--disable-title",
+           "rcll_ros", "rcll_sim_integration.launch"]
+    env:
+    - name: ROS_MASTER_URI
+      value: http://localhost:{{ ros.port }}
+{% for f in fawkes %}
+    - name: FAWKES_HOST_{{ loop.index }}
+      value: {{ f.host }}
+    - name: FAWKES_PORT_{{ loop.index }}
+      value: !!str {{ f.port }}
+{%- endfor %}
+    - name: NAVGRAPH_FILE
+      value: /run/navgraph/navgraph-generated.yaml
+    - name: NUM_ROBOTS
+      value: !!str {{ robots|length }}
+{% for robot in robots %}
+    - name: ROBOT_NAME_{{ loop.index }}
+      value: {{ robot }}
+{%- endfor %}
+    - name: TEAM_NAME
+      value: {{ team.name }}
+    - name: TEAM_COLOR
+      value: {{ team.color }}
+    - name: TEAM_CRYPTO_KEY
+      value: {{ team.crypto_key }}
+    - name: REFBOX_PEER_ADDRESS
+      value: !!str {{ refbox.peer_address }}
+{% for p in refbox.peers %}
+    - name: REFBOX_PEER_PUBLIC_RECV_PORT_{{ loop.index }}
+      value: !!str {{ p.public_recv_port }}
+    - name: REFBOX_PEER_PUBLIC_SEND_PORT_{{ loop.index }}
+      value: !!str {{ p.public_send_port }}
+    - name: REFBOX_PEER_CYAN_RECV_PORT_{{ loop.index }}
+      value: !!str {{ p.cyan_recv_port }}
+    - name: REFBOX_PEER_CYAN_SEND_PORT_{{ loop.index }}
+      value: !!str {{ p.cyan_send_port }}
+    - name: REFBOX_PEER_MAGENTA_RECV_PORT_{{ loop.index }}
+      value: !!str {{ p.magenta_recv_port }}
+    - name: REFBOX_PEER_MAGENTA_SEND_PORT_{{ loop.index }}
+      value: !!str {{ p.magenta_send_port }}
+{%- endfor %}
+
+    volumeMounts:
+    - name: shared-navgraph
+      mountPath: /run/navgraph
+
+  - name: roslaunch-navgraph-retriever
+    image: {{ rcll_sim_ros_image }}
+    #imagePullPolicy: Always
+    command: ["/opt/ros/run-env"]
+    args: ["roslaunch", "--wait", "--screen", "--skip-log-check", "--disable-title",
+           "rcll_fawkes_sim", "rcll_fawkes_sim_navgraph_retriever.launch"]
+    env:
+    - name: ROS_MASTER_URI
+      value: {{ navgraph_rosmaster }}
+    - name: NAVGRAPH_FILE
+      value: /run/navgraph/navgraph-generated.yaml
+
+    volumeMounts:
+    - name: shared-navgraph
+      mountPath: /run/navgraph
+
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never
