@@ -166,19 +166,20 @@ class PodController(object):
 
 		print("Waiting for pod and service deletion")
 		#print("Waiting for pods to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
-		current_pods = [(i.metadata.namespace, i.metadata.name)
-		                for i in core_api_del.list_pod_for_all_namespaces().items]
-		print("Current pods: %s" % ', '.join(["%s:%s" % uid for uid in current_pods]))
-		deleted_pods = [uid for uid in self.pods if uid not in current_pods]
-		print("Deleted pods: %s" % ', '.join(["%s:%s" % uid for uid in deleted_pods]))
-		for uid in deleted_pods:
-			print("  - %s:%s*" % uid)
-			#del self.pods[uid]
-
 		while self.pods:
-			print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
+			current_pods = [(i.metadata.namespace, i.metadata.name)
+			                for i in self.core_api.list_pod_for_all_namespaces().items]
+			#print("Current pods: %s" % ', '.join(["%s:%s" % uid for uid in current_pods]))
+			deleted_pods = [uid for uid in self.pods if uid not in current_pods]
+			#print("Deleted pods: %s" % ', '.join(["%s:%s" % uid for uid in deleted_pods]))
+			for uid in deleted_pods:
+				print("  - Pod %s:%s*" % uid)
+				#del self.pods[uid]
+			if not self.pods: break
+
+			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
 			w = Watch()
-			for event in w.stream(core_api_del.list_pod_for_all_namespaces):
+			for event in w.stream(self.core_api.list_pod_for_all_namespaces, timeout_seconds=30):
 				object = event['object']
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
@@ -186,27 +187,27 @@ class PodController(object):
 					print("  - Pod %s:%s" % uid)
 					del self.pods[uid]
 					if not self.pods: w.stop()
-		print("Done deleting pods")
-
-		print("Waiting for services to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
-		current_services = [(i.metadata.namespace, i.metadata.name)
-		                    for i in core_api_del.list_service_for_all_namespaces().items]
-		print("Current services: %s" % ', '.join(["%s:%s" % uid for uid in current_services]))
-		deleted_services = [uid for uid in self.services if uid not in current_services]
-		print("Deleted services: %s" % ', '.join(["%s:%s" % uid for uid in deleted_services]))
-		for uid in deleted_services:
-			print("  - %s:%s*" % uid)
-			del self.services[uid]
-
-		# There is a short gap here that could trigger a race condition
-		# but there seems to be no "query and keep watching" API that could
-		# prevent that.
+		#print("Done deleting pods")
 
 		#print("Waiting for services to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
 		while self.services:
-			print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
+			current_services = [(i.metadata.namespace, i.metadata.name)
+			                    for i in self.core_api.list_service_for_all_namespaces().items]
+			#print("Current services: %s" % ', '.join(["%s:%s" % uid for uid in current_services]))
+			deleted_services = [uid for uid in self.services if uid not in current_services]
+			#print("Deleted services: %s" % ', '.join(["%s:%s" % uid for uid in deleted_services]))
+			for uid in deleted_services:
+				print("  - Service %s:%s*" % uid)
+				del self.services[uid]
+			if not self.services: break
+
+			# There is a short gap here that could trigger a race condition
+			# but there seems to be no "query and keep watching" API that could
+			# prevent that.
+
+			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
 			w = Watch()
-			for event in w.stream(core_api_del.list_service_for_all_namespaces):
+			for event in w.stream(self.core_api.list_service_for_all_namespaces, timeout_seconds=30):
 				object = event['object']
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
