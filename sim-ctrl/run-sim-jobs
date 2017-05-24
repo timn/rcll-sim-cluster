@@ -31,6 +31,7 @@ class SimController(object):
 		job = self.wq.get_next_item()
 		while job is not None:
 			print("Running job %s" % job["name"])
+			manifests=[]
 			for i in job["params"]["elements"]:
 				i["vars"]["namespace"] = config.kube_namespace
 				print("  - template: %s" % i["template"])
@@ -38,7 +39,12 @@ class SimController(object):
 				items = self.podctrl.create_from_template(i["template"], i["vars"],
 				                                          sufficient_containers=sufficient_containers)
 				for i in items:
-					print("    - %s: %s" % i)
+					#print("    - %s: %s" % (i[0], i[1]))
+					manifests.append(str(i[2]))
+
+			update = { "$set": { "manifests": manifests } }
+			self.wq.update_item(job["name"], update)
+
 			if self.podctrl.monitor_pods():
 				print("Job %s completed successfully" % job["name"])
 				self.wq.mark_item_done(job["name"])
