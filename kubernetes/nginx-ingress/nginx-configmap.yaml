@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-ingress-configuration
+  namespace: kube-system
+data:
+  proxy-connect-timeout: "10"
+  proxy-read-timeout: "3600"
+  proxy-send-timeout: "3600"
