@@ -54,6 +54,12 @@ class WorkQueue(object):
 		}
 		self.collection.insert_one(doc)
 
+	def get_specific_item(self, name):
+		filter = {"name": name}
+		item = self.collection.find_one(filter)
+		#print("Item: %s" % item)
+		return item
+
 	def get_next_item(self):
 		filter = {"status.state": "pending"}
 		update = {"$set": {"status.state": "running",
@@ -74,18 +80,30 @@ class WorkQueue(object):
 
 	def requeue_item(self, name):
 		filter = {"name": name}
-		update = {"$set": {"status.state": "pending"},
-		          "$unset": {"status.running": ""}}
+		update = {"$set":   {"status.state": "pending"},
+		          "$unset": {"status.running": ""},
+		          "$push":  {"status.failed": datetime.datetime.utcnow()}}
+		self.collection.update_one(filter, update)
+
+	def update_item(self, name, update):
+		filter = {"name": name}
 		self.collection.update_one(filter, update)
 
 	def total_num_jobs(self):
 		return self.collection.count()
 
+	def num_pending_jobs(self):
+		filter = {"status.state": "pending"}
+		return self.collection.count(filter)
+
 		
 if __name__ == '__main__':
-	wq = WorkQueue(srv_name="_mongodb._tcp.mongodb")
+	wq = WorkQueue(srv_name="_mongodb._tcp.mongodb", database="workqueue", replicaset="rs0")
 	wq.clear()
-	wq.add_item("test", {"team-cyan": "A-Team", "team-magenta": "B-Team"})
+	#wq.add_item("test", {"team-cyan": "A-Team", "team-magenta": "B-Team"})
 	item = wq.get_next_item()
 	print("Item: %s" % item)
+	#wq.requeue_item(item["name"])
+	#item = wq.get_next_item()
+	#print("Item: %s" % item)
 	wq.mark_item_done(item["name"])
