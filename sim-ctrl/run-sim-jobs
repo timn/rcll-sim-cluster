@@ -6,6 +6,7 @@ import os
 from work_queue import WorkQueue
 from pod_controller import PodController
 from config import Configuration
+from datetime import datetime
 
 class SimController(object):
 	def __init__(self, config):
@@ -30,7 +31,11 @@ class SimController(object):
 	def run(self):
 		job = self.wq.get_next_item()
 		while job is not None:
+			# We do +1 here to include the one we are currently handling
+			print("Open jobs: %d" % (self.wq.num_pending_jobs() + 1))
+
 			print("Running job %s" % job["name"])
+			start_time = datetime.now()
 			manifests=[]
 			for i in job["params"]["elements"]:
 				i["vars"]["namespace"] = config.kube_namespace
@@ -45,6 +50,7 @@ class SimController(object):
 			update = { "$set": { "manifests": manifests } }
 			self.wq.update_item(job["name"], update)
 
+			print("Monitoring pods")
 			if self.podctrl.monitor_pods():
 				print("Job %s completed successfully" % job["name"])
 				self.wq.mark_item_done(job["name"])
@@ -53,6 +59,9 @@ class SimController(object):
 				self.wq.requeue_item(job["name"])
 			# Cleanup removing pods, services
 			self.podctrl.delete_all()
+			end_time = datetime.now()
+			print("Job %s finished (took %s)\n" % (job["name"], str(end_time-start_time)))
+
 			job = self.wq.get_next_item()
 		print("No more open jobs")
 
