@@ -3,6 +3,7 @@
 
 from work_queue import WorkQueue
 from config import Configuration
+from pprint import pprint
 
 import string
 import random
@@ -28,10 +29,15 @@ if __name__ == '__main__':
 	               replicaset=config.mongodb_rs,
 	               collection=config.mongodb_queue_col)
 
-	jobname = generate_id("Carologistics", "A-Team", wq.total_num_jobs()+1)
+	num_robots  = 1
+	team_prefix="c"
+	team_cyan="Carologistics"
+	team_magenta="A-Team"
+	team_color="CYAN"
+	robots = ["C-R%d" % i for i in range(1,num_robots+1)]
 
-	robots = ' '.join(["C-R%d" % i for i in range(1,4)])
-	
+	jobname = generate_id(team_cyan, team_magenta, wq.total_num_jobs()+1)
+
 	params = \
 	{
 		"elements": [
@@ -39,40 +45,104 @@ if __name__ == '__main__':
 			    "template": "sim-refbox",
 			    "vars":	{
 				    "rcll_sim_image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic",
-				    "team_cyan": "Carologistics",
-				    "team_magenta": "A-Team",
+				    "team_cyan": team_cyan,
+				    "team_magenta": team_magenta,
 				    "robots": robots
 			    },
 				"sufficient_containers": ["run-game"]
+		    },
+		    {
+			    "template": "gzweb",
+			    "vars":	{
+				    "gzweb_image": "defiant.kbsg.rwth-aachen.de:5000/timn/gzweb:7"
+			    }
 		    }
-			# ,
-		    # {
-			#     "template": "gzweb",
-			#     "vars":	{
-			# 	    "gzweb_image": "defiant.kbsg.rwth-aachen.de:5000/timn/gzweb:7",
-			#     }
-		    # }
 		]
 	}
-	for i in range (1, 4):
-		team_prefix="c"
+	for i in range (1, num_robots+1):
+		robot_suffix="%s%d" % (team_prefix, i)
 		robot_pod = {
 			"template": "robot-pod",
 			"vars":	{
 				"rcll_sim_image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim:2016-f25-kinetic",
 				"robot": {
-					"pod_name": "robot-%s%d" % (team_prefix, i),
-				"service_name": "robot-%s%d" % (team_prefix, i),
+					"pod_name": "robot-%s" % robot_suffix,
+					"service_name": "robot-%s" % robot_suffix,
+					"plugins": "gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-navgraph-generator",
 					"name": "%s-R%s" % (team_prefix.upper(), i),
-					"num": i
+					"num": i,
+					"config_num": i
 				},
 				"fawkes": {
-					"service_name": "fawkes-%s%s" % (team_prefix, i),
+					"service_name": "fawkes-%s" % robot_suffix,
 					"port": 1920 + i
+				},
+				"ros": {
+					"service_name": "rosmaster-%s" % robot_suffix,
+					"port": 11311
 				}
 			}
 		}
 		params["elements"].append(robot_pod)
 
-	print("Creating %s\n%s\n" % (jobname, str(params)))
+	agent_port_offset = {
+		"CYAN": 6,
+		"MAGENTA": 9
+	}
+	ros_pod = {
+		"template": "rcll-sim-ros",
+		"vars":	{
+			"rcll_sim_ros_image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim-ros:2016-f25-kinetic",
+			"robots": robots,
+			"ros": {
+				"port": 11311
+			},
+			"fawkes": [
+				{
+					"host": "fawkes-%s%d" % (team_prefix, i),
+					"port": 1920 + i
+				}
+				for i in range(1, num_robots+1)
+			],
+			"navgraph_rosmaster": "http://rosmaster-%s1:11311" % team_prefix,
+			"team": {
+				"name": team_cyan,
+				"color": team_color,
+				"crypto_key": "randomkey"
+			},
+			"refbox": {
+				"peer_address": "refbox",
+				"peers": [
+					{
+						"public_recv_port":  4410 + agent_port_offset[team_color] + i,
+						"public_send_port":  4450 + agent_port_offset[team_color] + i,
+						"cyan_recv_port":    4470 + agent_port_offset[team_color] + i,
+						"cyan_send_port":    4490 + agent_port_offset[team_color] + i,
+						"magenta_recv_port": 4510 + agent_port_offset[team_color] + i,
+						"magenta_send_port": 4530 + agent_port_offset[team_color] + i
+					}
+					for i in range(1, num_robots+1)
+				]
+			},
+		}
+	}
+	params["elements"].append(ros_pod)
+
+	rosplan_pod = {
+		"template": "rcll-sim-rosplan",
+		"vars":	{
+			"rcll_sim_rosplan_image": "defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim-rosplan:2016-f25-kinetic",
+			"robots": robots,
+			"ros_master_uri": "http://rosmaster:11311",
+			"team": {
+				"name": team_cyan,
+				"color": team_color
+			},
+			"autostart_planning": "true"
+		}
+	}
+	params["elements"].append(rosplan_pod)
+
+	print("Creating %s\n" % jobname)
+	pprint(params)
 	wq.add_item(jobname, params)
