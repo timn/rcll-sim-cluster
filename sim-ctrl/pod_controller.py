@@ -16,6 +16,8 @@ class PodController(object):
 		self.beta1_api = kubernetes.client.ExtensionsV1beta1Api()
 		self.pods = {}
 		self.services = {}
+		self.ingress = {}
+		self.config_maps = {}
 
 		self.jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(config.template_path),
 										autoescape=False)
@@ -57,6 +59,16 @@ class PodController(object):
 			elif manifest["kind"] == "Service":
 				#print("Creating Service '%s'" % manifest["metadata"]["name"])
 				self.create_service(manifest)
+				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
+
+			elif manifest["kind"] == "Ingress":
+				#print("Creating Ingress '%s'" % manifest["metadata"]["name"])
+				self.create_ingress(manifest)
+				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
+
+			elif manifest["kind"] == "ConfigMap":
+				#print("Creating ConfigMap '%s'" % manifest["metadata"]["name"])
+				self.create_config_map(manifest)
 				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
 			else:
@@ -105,19 +117,49 @@ class PodController(object):
 			print("Failed to create service %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 														manifest["metadata"]["name"], e))
 
+	def create_ingress(self, manifest):
+		try:
+			res = self.beta1_api.create_namespaced_ingress(namespace=manifest["metadata"]["namespace"],
+			                                               body=manifest)
+			self.ingress[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+				{ "phase": "Requested", "manifest": manifest }
+		except ApiException as e:
+			print("Failed to create ingress %s/%s: '%s'" % (manifest["metadata"]["namespace"],
+			                                                manifest["metadata"]["name"], e))
+
+	def create_config_map(self, manifest):
+		try:
+			res = self.core_api.create_namespaced_config_map(namespace=manifest["metadata"]["namespace"],
+			                                                 body=manifest)
+			self.config_maps[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+				{ "phase": "Requested", "manifest": manifest }
+		except ApiException as e:
+			print("Failed to create config map %s/%s: '%s'" % (manifest["metadata"]["namespace"],
+			                                                   manifest["metadata"]["name"], e))
+
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
-		core_api_del = kubernetes.client.CoreV1Api(kubernetes.client.ApiClient())
 		print("Deleting items")
 		for uid in self.pods:
 			print("  - Pod %s:%s" % uid)
-			res = core_api_del.delete_namespaced_pod(namespace = uid[0],
-			                                         name = uid[1],
-			                                         body = V1DeleteOptions())
+			res = self.core_api.delete_namespaced_pod(namespace = uid[0],
+			                                          name = uid[1],
+			                                          body = V1DeleteOptions())
 
 		for uid in self.services:
 			print("  - Service %s:%s" % uid)
-			res = core_api_del.delete_namespaced_service(namespace = uid[0], name = uid[1])
+			res = self.core_api.delete_namespaced_service(namespace = uid[0], name = uid[1])
+
+		for uid in self.ingress:
+			print("  - Ingress %s:%s" % uid)
+			res = self.beta1_api.delete_namespaced_ingress(namespace = uid[0], name = uid[1],
+			                                               body = V1DeleteOptions())
+
+		for uid in self.config_maps:
+			print("  - ConfigMap %s:%s" % uid)
+			res = self.core_api.delete_namespaced_config_map(namespace = uid[0],
+			                                                 name = uid[1],
+			                                                 body = V1DeleteOptions())
 
 		# Not checking for possibly deleted pods, pods take a while to
 		# delete and they will not be listed anymore
