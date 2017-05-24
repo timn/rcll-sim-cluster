@@ -40,6 +40,7 @@ class PodController(object):
 		
 		yamldoc = template.render(vars)
 		#print("YAML doc:\n%s\n\n" % yamldoc)
+		rv.append(("yamldoc", template_name, yamldoc))
 		manifests = yaml.load_all(yamldoc)
 		for manifest in manifests:
 			if manifest["kind"] == "Pod":
@@ -47,12 +48,12 @@ class PodController(object):
 				self.create_pod(manifest, sufficient_containers=sufficient_containers)
 				s = ",".join(["{}{}".format("*" if c["name"] in sufficient_containers else "", c["name"])
 				              for c in manifest["spec"]["containers"]])
-				rv.append((manifest["kind"], manifest["metadata"]["name"] + " (" + s + ")"))
+				rv.append((manifest["kind"], manifest["metadata"]["name"] + " (" + s + ")", manifest))
 
 			elif manifest["kind"] == "Service":
 				print("Creating Service '%s'" % manifest["metadata"]["name"])
 				self.create_service(manifest)
-				rv.append((manifest["kind"], manifest["metadata"]["name"]))
+				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
 			else:
 				raise ValueError("Unsupported manifest kind '%s'" % manifest["kind"])
