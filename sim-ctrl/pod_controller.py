@@ -44,8 +44,7 @@ class PodController(object):
 		rv = []
 		
 		yamldoc = template.render(vars)
-		#print("YAML doc:\n%s\n\n" % yamldoc)
-		rv.append(("yamldoc", template_name, yamldoc))
+		rv.append(("YAML", template_name, yamldoc))
 		manifests = yaml.load_all(yamldoc)
 		for manifest in manifests:
 			print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
