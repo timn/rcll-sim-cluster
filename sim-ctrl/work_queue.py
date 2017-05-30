@@ -113,7 +113,18 @@ class WorkQueue(object):
 	def total_num_jobs(self):
 		return self.collection.count()
 
-	def num_pending_jobs(self):
-		filter = {"status.state": "pending"}
-		return self.collection.count(filter)
+	def num_pending_jobs(self, recently_failed_deadline=None):
+		all_pending_filter = {"status.state": "pending"}
+		all_pending = self.collection.count(all_pending_filter)
 
+		without_recently_failed = all_pending
+		if recently_failed_deadline is not None:
+			no_recently_failed_filter = {
+				"status.state": "pending",
+				"$or": [ {"status.failed": { "$exists": False} },
+				         {"status.failed": { "$size": 0} },
+				         {"status.failed": { "$all": [ {"$elemMatch": { "$lte": recently_failed_deadline}}]}}]
+			}
+			without_recently_failed = self.collection.count(no_recently_failed_filter)
+
+		return (all_pending, without_recently_failed)
