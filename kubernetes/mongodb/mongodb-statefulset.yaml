@@ -12,9 +12,15 @@
 # limitations under the License.
 ---
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: database
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: mongodb
+  namespace: database
   labels:
     name: mongodb
     replica-set: rs0
@@ -32,6 +38,7 @@ apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
   name: mongodb
+  namespace: database
 spec:
   serviceName: mongodb
   replicas: 3
