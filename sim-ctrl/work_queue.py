@@ -27,10 +27,12 @@ class WorkQueue(object):
 
 			print("Connecting to %s" % uri)
 			self.client = pymongo.MongoClient(uri)
+
+		elif uri is not None:
+			self.client = pymongo.MongoClient(uri)		
 		else:
 			raise ValueError("No valid connection parameter passed")
 
-		
 		# The following throws on connection failure
 		# The ismaster command is cheap and does not require auth.
 		self.client.admin.command('ismaster')
