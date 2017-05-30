@@ -17,7 +17,7 @@ class WorkQueue(object):
 		if host is not None and port is not None:
 			self.client = pymongo.MongoClient(host, port, replicaset=replicaset)
 		elif srv_name is not None:
-			srv_records = dns.resolver.query('_mongodb._tcp.mongodb', 'SRV')
+			srv_records = dns.resolver.query(srv_name, 'SRV')
 			uri="mongodb://" \
 			     + ','.join([str(srv.target) + ":" + str(srv.port) for srv in srv_records])
 			if self.database_name is not None:
