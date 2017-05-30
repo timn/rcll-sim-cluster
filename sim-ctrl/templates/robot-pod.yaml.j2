@@ -74,15 +74,15 @@ spec:
     - name: ROS_MASTER_URI
       value: http://localhost:{{ ros.port }}
   - name: fawkes
-    image: {{ rcll_sim_image }}
+    image: {{ robot_pod_image }}
     #imagePullPolicy: Always
     command: ["/opt/rcll-sim/run-component"]
     args: ["fawkes"]
     env:
     - name: CONFIG
-      value: gazsim-configurations/default/robotino{{ robot.config_num }}.yaml
+      value: gazsim-configurations/default/robotino{{ fawkes.config_num }}.yaml
     - name: META_PLUGIN
-      value: {{ robot.plugins|default("gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-meta-agent,gazsim-navgraph-generator") }}
+      value: {{ fawkes.plugins|default("gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-meta-agent,gazsim-navgraph-generator") }}
     - name: LOG_LEVEL
       value: debug
     - name: GAZEBO_MASTER_URI
@@ -97,9 +97,9 @@ spec:
       failureThreshold: {{ fawkes.readiness_failure_threshold|default("12") }}
 
   - name: localize-robot
-    image: {{ rcll_sim_image }}
+    image: {{ robot_pod_image }}
     command: ["/opt/rcll-sim/localize-robot"]
-    args: ["C-R1"]
+    args: ["{{ robot.name }}"]
     env:
     - name: REMOTE
       value: localhost:{{ fawkes.port }}

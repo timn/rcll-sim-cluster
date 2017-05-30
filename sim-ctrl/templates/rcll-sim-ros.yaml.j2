@@ -18,7 +18,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rosmaster
+  name: rosmaster-{{ team.color|lower }}
   namespace: {{ namespace }}
 spec:
   selector:
@@ -33,7 +33,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: rcll-sim-ros
+  name: rcll-sim-ros-{{ team.color|lower }}
   namespace: {{ namespace }}
 spec:
   selector:
@@ -46,13 +46,13 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: rcll-sim-ros
+  name: rcll-sim-ros-{{ team.color|lower }}
   namespace: {{ namespace }}
   labels:
     app: ros
     robot: central
 spec:
-  hostname: rcll-sim-ros
+  hostname: rcll-sim-ros-{{ team.color|lower }}
 
   volumes:
   - name: shared-navgraph
@@ -113,6 +113,10 @@ spec:
     - name: REFBOX_PEER_MAGENTA_SEND_PORT_{{ loop.index }}
       value: !!str {{ p.magenta_send_port }}
 {%- endfor %}
+{% if refbox.disable_beacon_sender -%}
+    - name: DISABLE_BEACON_SENDER
+      value: !! true
+{% endif -%}
 
     volumeMounts:
     - name: shared-navgraph

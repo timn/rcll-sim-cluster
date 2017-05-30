@@ -1,0 +1,20 @@
+{% set num_robots =      1 %}
+{% set robot_pod_image = "timn/rcll-sim:2016-f25-kinetic" %}
+{% set crypto_key =      "randomkey" %}
+
+{% set robot_pod_fawkes_plugins = "gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-navgraph-generator" %}
+
+{% set run_ros_pod = True %}
+
+{% macro pods(team_name, team_color) %}
+- template: rcll-sim-rosplan
+  vars:
+    rcll_sim_rosplan_image: {{ docker_registry }}timn/rcll-sim-rosplan:2016-f25-kinetic
+    robots:
+      {{ robots()|indent(6) }}
+    ros_master_uri: http://rosmaster-{{ team_color|lower }}:11311
+    team:
+      name: {{ team_name }}
+      color: {{ team_color }}
+    autostart_planning: !!str true
+{% endmacro %}
