@@ -10,9 +10,9 @@ RUN \
   dnf -y install 'dnf-command(copr)' &&\
   dnf -y copr enable timn/python-kubernetes &&\
   dnf -y install python3-kubernetes python3-jinja2 python3-pymongo \
-                 python3-dns jq openssh-server &&\
+                 python3-dns jq mongodb openssh-server &&\
 	dnf clean all
 
 RUN mkdir -p /opt/rcll-sim-ctrl
 COPY templates /opt/rcll-sim-ctrl/templates
-COPY *.py run-sim-jobs create-sim-job Dockerfile /opt/rcll-sim-ctrl/
+COPY *.py run-sim-jobs create-sim-job print-job-info create-tournament Dockerfile /opt/rcll-sim-ctrl/
