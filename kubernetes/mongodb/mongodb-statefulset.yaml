@@ -31,7 +31,7 @@ spec:
     targetPort: 27017
   clusterIP: None
   selector:
-    role: mongodb
+    database: mongodb
     replica-set: rs0
 ---
 apiVersion: apps/v1beta1
@@ -45,7 +45,7 @@ spec:
   template:
     metadata:
       labels:
-        role: mongodb
+        database: mongodb
         replica-set: rs0
     spec:
       terminationGracePeriodSeconds: 10
@@ -67,7 +67,7 @@ spec:
           image: cvallance/mongo-k8s-sidecar
           env:
             - name: MONGO_SIDECAR_POD_LABELS
-              value: "role=mongodb,replica-set=rs0"
+              value: "database=mongodb,replica-set=rs0"
   volumeClaimTemplates:
   - metadata:
       name: mongo-persistent-storage
