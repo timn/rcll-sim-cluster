@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pymongo
+from pymongo import ReturnDocument
 from pymongo.errors import ConnectionFailure
 
 import datetime
@@ -9,10 +10,11 @@ import dns.resolver
 class WorkQueue(object):
 	def	__init__(self, database=None, collection=None,
 				 host=None, port=None, srv_name=None, uri=None,
-				 replicaset=None):
+				 replicaset=None, count_collection="counters"):
 
 		self.database_name = database or "workqueue"
 		self.collection_name = collection or "q"
+		self.count_collection_name = count_collection
 
 		if host is not None and port is not None:
 			self.client = pymongo.MongoClient(host, port, replicaset=replicaset)
@@ -41,13 +43,25 @@ class WorkQueue(object):
 		self.collection = self.db[self.collection_name]
 		self.collection.create_index([('name', pymongo.ASCENDING)], unique=True)
 
+		self.count_collection = self.db[self.count_collection_name]
+
 	def clear(self):
 		self.collection.delete_many({})
+		self.count_collection.delete_many({})
 
-	def add_item(self, name, params):
+	def get_next_id(self):
+		filter = {"_id": "workqueue_counter"}
+		update = {"$inc": { "count": 1 }}
+		doc = self.count_collection.find_one_and_update(filter, update,
+		                                                upsert=True,
+		                                                return_document=ReturnDocument.AFTER)
+		return doc["count"]
+
+	def add_item(self, name, idnum, params):
 		doc = \
 		{
 			"name": name,
+			"idnum": idnum,
 			"params": params,
 			"status": {
 				"state": "pending",
@@ -62,8 +76,12 @@ class WorkQueue(object):
 		#print("Item: %s" % item)
 		return item
 
-	def get_next_item(self):
+	def get_next_item(self, recently_failed_deadline=None):
 		filter = {"status.state": "pending"}
+		if recently_failed_deadline is not None:
+			filter["$or"] = [ {"status.failed": { "$exists": False} },
+			                  {"status.failed": { "$size": 0} },
+			                  {"status.failed": { "$all": [ {"$elemMatch": { "$lte": recently_failed_deadline}}]}}]
 		update = {"$set": {"status.state": "running",
 		                   "status.running": datetime.datetime.utcnow()}}
 		sort = [("status.created", pymongo.ASCENDING)]
@@ -73,6 +91,7 @@ class WorkQueue(object):
 			return None
 		else:
 			return { "name": item["name"], "params": item["params"] }
+
 
 	def mark_item_done(self, name):
 		filter = {"name": name}
