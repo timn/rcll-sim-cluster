@@ -47,27 +47,48 @@ class PodController(object):
 		rv.append(("YAML", template_name, yamldoc))
 		manifests = yaml.load_all(yamldoc)
 		for manifest in manifests:
-			print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
 			if manifest["kind"] == "Pod":
 				#print("Creating Pod '%s'" % manifest["metadata"]["name"])
-				self.create_pod(manifest, sufficient_containers=sufficient_containers)
-				s = ",".join(["{}{}".format("*" if c["name"] in sufficient_containers else "", c["name"])
-				              for c in manifest["spec"]["containers"]])
-				rv.append((manifest["kind"], manifest["metadata"]["name"] + " (" + s + ")", manifest))
+				s = manifest["metadata"]["name"] + " (" \
+				    + ",".join(["{}{}".format("*" if c["name"] in sufficient_containers else "", c["name"])
+				                for c in manifest["spec"]["containers"]]) \
+				    + ")"
+				print("    - %s: %s" % (manifest["kind"], s))
+				try:
+					self.create_pod(manifest, sufficient_containers=sufficient_containers)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
+				rv.append((manifest["kind"], s, manifest))
 
 			elif manifest["kind"] == "Service":
 				#print("Creating Service '%s'" % manifest["metadata"]["name"])
-				self.create_service(manifest)
+				print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
+				try:
+					self.create_service(manifest)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
 				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
 			elif manifest["kind"] == "Ingress":
 				#print("Creating Ingress '%s'" % manifest["metadata"]["name"])
-				self.create_ingress(manifest)
+				print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
+				try:
+					self.create_ingress(manifest)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
 				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
 			elif manifest["kind"] == "ConfigMap":
 				#print("Creating ConfigMap '%s'" % manifest["metadata"]["name"])
-				self.create_config_map(manifest)
+				print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
+				try:
+					self.create_config_map(manifest)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
 				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
 			else:
@@ -88,7 +109,7 @@ class PodController(object):
 			res = self.core_api.create_namespace(body)
 		except ApiException as e:
 			print("Failed to create namespace %s: '%s'" % (namespace, e))
-			raise
+			raise e
 
 	def create_pod(self, manifest, sufficient_containers=[]):
 		try:
@@ -105,6 +126,7 @@ class PodController(object):
 		except ApiException as e:
 			print("Failed to create pod %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 														manifest["metadata"]["name"], e))
+			raise e
 			
 	def create_service(self, manifest):
 		try:
@@ -115,6 +137,7 @@ class PodController(object):
 		except ApiException as e:
 			print("Failed to create service %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 														manifest["metadata"]["name"], e))
+			raise e
 
 	def create_ingress(self, manifest):
 		try:
@@ -125,6 +148,7 @@ class PodController(object):
 		except ApiException as e:
 			print("Failed to create ingress %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 			                                                manifest["metadata"]["name"], e))
+			raise e
 
 	def create_config_map(self, manifest):
 		try:
@@ -135,6 +159,7 @@ class PodController(object):
 		except ApiException as e:
 			print("Failed to create config map %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 			                                                   manifest["metadata"]["name"], e))
+			raise e
 
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
