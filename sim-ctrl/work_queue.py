@@ -98,14 +98,3 @@ class WorkQueue(object):
 		filter = {"status.state": "pending"}
 		return self.collection.count(filter)
 
-		
-if __name__ == '__main__':
-	wq = WorkQueue(srv_name="_mongodb._tcp.mongodb", database="workqueue", replicaset="rs0")
-	wq.clear()
-	#wq.add_item("test", {"team-cyan": "A-Team", "team-magenta": "B-Team"})
-	item = wq.get_next_item()
-	print("Item: %s" % item)
-	#wq.requeue_item(item["name"])
-	#item = wq.get_next_item()
-	#print("Item: %s" % item)
-	wq.mark_item_done(item["name"])
