@@ -36,16 +36,26 @@ spec:
       labels:
         k8s-app: kubernetes-dashboard
       annotations:
-        scheduler.alpha.kubernetes.io/tolerations: |
-          [
-            {
-              "key": "dedicated",
-              "operator": "Equal",
-              "value": "master",
-              "effect": "NoSchedule"
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+        scheduler.alpha.kubernetes.io/affinity: |
+          {
+            "nodeAffinity": {
+              "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {"matchExpressions": [{"key": "cluster-services", "operator": "Exists"}]}
+                ]
+              }
             }
-          ]
+          }
     spec:
+      #affinity:
+      #  nodeAffinity:
+      #    requiredDuringSchedulingIgnoredDuringExecution:
+      #      nodeSelectorTerms:
+      #        matchExpressions:
+      #        - key: cluster-services
+      #          operator: Exists
       containers:
       - name: kubernetes-dashboard
         image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.6.1

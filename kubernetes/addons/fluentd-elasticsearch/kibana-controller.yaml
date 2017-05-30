@@ -16,6 +16,19 @@ spec:
     metadata:
       labels:
         k8s-app: kibana-logging
+      annotations:
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+        scheduler.alpha.kubernetes.io/affinity: |
+          {
+            "nodeAffinity": {
+              "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms":
+                  [
+                    {"matchExpressions": [{"key": "cluster-services", "operator": "Exists"}]}
+                  ]
+                }
+              }
+            }
     spec:
       containers:
       - name: kibana-logging
