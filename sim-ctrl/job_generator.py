@@ -9,19 +9,21 @@ import os
 import yaml
 
 class JobGenerator(object):
-	def __init__(self, template, debug=False):
+	def __init__(self, template, debug=False, dry_run=False):
 		self.config = Configuration()
 		self.debug = debug
+		self.dry_run = dry_run
 
-		# The work queue will figure out a valid combination of MongoDB access
-		# parameters, e.g., host/port, URI, or replica set discovery via DNS
-		self.wq = WorkQueue(host=self.config.mongodb_host,
-		                    port=self.config.mongodb_port,
-		                    uri=self.config.mongodb_uri,
-		                    srv_name=self.config.mongodb_rs_srv,
-		                    database=self.config.mongodb_queue_db,
-		                    replicaset=self.config.mongodb_rs,
-		                    collection=self.config.mongodb_queue_col)
+		if not dry_run:
+			# The work queue will figure out a valid combination of MongoDB access
+			# parameters, e.g., host/port, URI, or replica set discovery via DNS
+			self.wq = WorkQueue(host=self.config.mongodb_host,
+			                    port=self.config.mongodb_port,
+			                    uri=self.config.mongodb_uri,
+			                    srv_name=self.config.mongodb_rs_srv,
+			                    database=self.config.mongodb_queue_db,
+			                    replicaset=self.config.mongodb_rs,
+			                    collection=self.config.mongodb_queue_col)
 
 		if not os.path.exists(template):
 			raise Exception("Template file does not exist")
@@ -61,16 +63,16 @@ class JobGenerator(object):
 
 		(tournament_doc, parameter_doc) = yaml.load_all(yamldoc)
 
-		if self.debug:
-			print("Tournament:\n")
-			pprint(tournament_doc)
-			print("Parameters:\n")
-			pprint(parameter_doc)
-			print("Parameters:")
-			for p in parameter_doc["parameters"]:
-				print("- %s" % p["template"])
+		#if self.debug:
+			#print("Tournament:\n")
+			#pprint(tournament_doc)
+			#print("Parameters:\n")
+			#pprint(parameter_doc)
+			#print("Parameters:")
+			#for p in parameter_doc["parameters"]:
+			#	print("- %s" % p["template"])
 
-		idnum = self.wq.get_next_id()
+		idnum = 1 if self.dry_run else self.wq.get_next_id()
 		jobname = self._generate_id(tournament_name, team_cyan, team_magenta, idnum)
 
 		params = {
@@ -78,14 +80,15 @@ class JobGenerator(object):
 			"parameter_doc_yaml": yamldoc,
 			"template_parameters": parameter_doc["parameters"]
 		}
-		if self.debug:
-			print("Job Parameters")
-			pprint(params)
+		#if self.debug:
+			#print("Job Parameters")
+			#pprint(params)
 
 		return (jobname, idnum, params)
 
 	def store(self, jobname, idnum, params):
-		self.wq.add_item(jobname, idnum, params)
+		if not self.dry_run:
+			self.wq.add_item(jobname, idnum, params)
 
 	def generate_and_store(self, tournament_name, team_cyan, team_magenta):
 		(jobname, idnum, params) = self.generate(tournament_name, team_cyan, team_magenta)

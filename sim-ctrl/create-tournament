@@ -9,8 +9,7 @@ import datetime
 class TournamentGenerator(object):
 	def __init__(self, template, debug=False, dry_run=False):
 		self.dry_run = dry_run
-		if not dry_run:
-			self.jobgen = JobGenerator(template, debug=debug)
+		self.jobgen = JobGenerator(template, debug=debug, dry_run=self.dry_run)
 
 	def pairings(self, teams):
 		return [p for p in itertools.permutations(teams, r=2)]
@@ -24,14 +23,9 @@ class TournamentGenerator(object):
 		print("Number of pairings: %d" % len(pairings))
 		for p in self.pairings_iterator(pairings, n):
 			num_games += 1
-			if self.dry_run:
-				print("- {tournament_name}:{:0{width}}:{team_cyan}-vs-{team_magenta}"\
-				      .format(num_games, width=6, tournament_name=tournament_name,
-				              team_cyan=p[0], team_magenta=p[1]))
-			else:
-				(jobname, idnum, params) = self.jobgen.generate_and_store(tournament_name,
-				                                                   team_cyan=p[0], team_magenta=p[1])
-				print("- %s" % jobname)
+			(jobname, idnum, params) = self.jobgen.generate_and_store(tournament_name,
+			                                                          team_cyan=p[0], team_magenta=p[1])
+			print("- %s" % jobname)
 		print("Total number of games: %d" % num_games)
 
 		if time_per_game > 0:
