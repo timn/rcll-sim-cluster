@@ -4,7 +4,11 @@
   global_osd_pool_default_size=2 \
   osd_cluster_network=10.23.0.0/16 \
   osd_public_network=10.23.0.0/16 \
-  mon_data_avail_warn=10
+  mon_data_avail_warn=10 \
+  global_osd_pool_default_pg_num=256 \
+  global_osd_pool_default_pgp_num=256
+
+kubectl create -f rbd-storage-class.yaml
 
 #kubectl create -f rbd-storage-class.yaml
 echo "Waiting for monitoring pod to come up"
