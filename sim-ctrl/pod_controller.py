@@ -174,7 +174,7 @@ class PodController(object):
 			#print("Deleted pods: %s" % ', '.join(["%s:%s" % uid for uid in deleted_pods]))
 			for uid in deleted_pods:
 				print("  - Pod %s:%s*" % uid)
-				#del self.pods[uid]
+				del self.pods[uid]
 			if not self.pods: break
 
 			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
