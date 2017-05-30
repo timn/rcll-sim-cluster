@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+from work_queue import WorkQueue
+from config import Configuration
+
+import argparse
+from pprint import pprint
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='Print job info')
+	parser.add_argument('job_name', metavar="JOB-NAME",
+	                    help='Name of job to retrieve info for.')
+	args = parser.parse_args()
+
+	config = Configuration()
+	wq = WorkQueue(host=config.mongodb_host,
+	               port=config.mongodb_port,
+	               uri=config.mongodb_uri,
+	               srv_name=config.mongodb_rs_srv,
+	               database=config.mongodb_queue_db,
+	               replicaset=config.mongodb_rs,
+	               collection=config.mongodb_queue_col)
+
+	item =  wq.get_specific_item(args.job_name)
+	if item is None:
+		print("Failed to retrieve item with name '%s'" % args.job_name)
+
+	pprint(item)
