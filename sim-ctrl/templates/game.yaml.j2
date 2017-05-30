@@ -17,9 +17,8 @@ metadata:
 
 ---
 {% set docker_registry = "defiant.kbsg.rwth-aachen.de:5000/" -%}
-{% set refbox_peer_port_offset_cyan = 6 -%}
-{% set refbox_peer_port_offset_magenta = 9 -%}
 parameters:
+### Common simulation base pods
 {% block sim_pod -%}
 - template: sim-refbox
   vars:
@@ -37,66 +36,37 @@ parameters:
     gzweb_image: {{ docker_registry }}timn/gzweb:7
 {% endblock %}
 
-{% block sim_ros_pod -%}
-{% if team_cyan.run_ros_pod -%}
-- template: rcll-sim-ros
-  vars:
-    rcll_sim_ros_image: {{ docker_registry }}timn/rcll-sim-ros:2016-f25-kinetic
-    robots:
-      {{ robots()|indent(6) }}
-    ros:
-      port: 11311
-    fawkes:
-{%- for i in range(1, team_cyan.num_robots + 1) %}
-      - host: fawkes-c{{ i }}
-        port: {{ 1920 + i }}
-{%- endfor %}
-    navgraph_rosmaster: http://rosmaster-c1:11311
-    team:
-      name: {{ team_name_cyan }}
-      color: CYAN
-      crypto_key: {{ team_cyan.crypto_key|default("randomkey") }}
-    refbox:
-      peer_address: refbox
-      disable_beacon_sender: {{ team_cyan.disable_beacon_sender|default("false") }}
-      peers:
-{%- for i in range(1, team_cyan.num_robots + 1) %}
-      - public_recv_port: {{  4410 + refbox_peer_port_offset_cyan + i }}
-        public_send_port: {{  4450 + refbox_peer_port_offset_cyan + i }}
-        cyan_recv_port: {{    4470 + refbox_peer_port_offset_cyan + i }}
-        cyan_send_port: {{    4490 + refbox_peer_port_offset_cyan + i }}
-        magenta_recv_port: {{ 4510 + refbox_peer_port_offset_cyan + i }}
-        magenta_send_port: {{ 4530 + refbox_peer_port_offset_cyan + i }}
-{%- endfor %}
-{%- endif %}
+### Team-specific robot pods
+{% from "game_robot_pod.j2" import robot_pod with context -%}
+{% block robot_pods_cyan -%}
+{{ robot_pod(team_name_cyan, "CYAN", team_cyan) }}
 {% endblock -%}
+{% block robot_pods_magenta -%}
+{{ robot_pod(team_name_magenta, "MAGENTA", team_magenta) }}
+{%- endblock %}
 
-{% block robot_pod -%}
-{% for robot_idx in range(1, team_cyan.num_robots + 1) %}
-{% set robot_suffix = "c" + robot_idx|string -%}
-{% set robot_name   = "C-R" + robot_idx|string -%}
-- template: robot-pod
-  vars:
-    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic
-    robot_pod_image: {{ docker_registry }}{{ team_cyan.robot_pod_image|default("timn/rcll-sim:2016-f25-kinetic") }}
-    robot:
-      pod_name: robot-{{ robot_suffix }}
-      service_name: robot-{{ robot_suffix }}
-      name: {{ robot_name }}
-      num: {{ robot_idx }}
-    fawkes:
-      service_name: fawkes-{{ robot_suffix }}
-      port: {{ 1920 + robot_idx }}
-      config_num: {{ robot_idx }}
-      plugins: {{ team_cyan.robot_pod_fawkes_plugins|default("gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-navgraph-generator") }}
-    ros:
-      service_name: rosmaster-{{ robot_suffix }}
-      port: 11311
-{% endfor -%}
+### Optional team-specific ROS integration pods
+{%- from "game_ros_pod.j2" import ros_pod with context -%}
+{% block ros_pod_cyan -%}
+{{ ros_pod(team_name_cyan, "CYAN", team_cyan) }}
 {% endblock -%}
+{% block ros_pod_magenta -%}
+{{ ros_pod(team_name_magenta, "MAGENTA", team_magenta) }}
+{%- endblock %}
 
-{% block team_pods -%}
+### Team-specific pods
+{%- block team_pods_cyan -%}
 {% if team_cyan.pods -%}
 {{ team_cyan.pods(team_name_cyan, "CYAN") }}
+{% else -%}
+# No team-specific pods for team {{ team_name_cyan }} (CYAN)
+{% endif -%}
+{% endblock -%}
+
+{% block team_pods_magenta -%}
+{% if team_magenta.pods -%}
+{{ team_magenta.pods(team_name_magenta, "MAGENTA") }}
+{% else -%}
+# No team-specific pods for team {{ team_name_magenta }} (MAGENTA)
 {% endif -%}
 {% endblock -%}
