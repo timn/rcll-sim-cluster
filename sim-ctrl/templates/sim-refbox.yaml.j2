@@ -56,11 +56,11 @@ spec:
       #imagePullPolicy: Always
       command: ["/opt/rcll-sim/run-component"]
       args: ["gazebo"]
-      {% if use_default_world %}
+{% if gazebo_world %}
       env:
-      - name: USE_DEFAULT_WORLD
-        value: "true"
-      {%- endif %}
+      - name: GAZEBO_WORLD
+        value: {{ gazebo_world }}
+{% endif %}
       readinessProbe:
         exec:
           command: ["sh", "-c", "gz topic -l | grep time-sync"]
