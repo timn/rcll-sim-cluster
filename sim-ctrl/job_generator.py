@@ -61,7 +61,12 @@ class JobGenerator(object):
 		yamldoc = template.render(param_vars)
 		if self.debug: print("YAML:\n%s" % yamldoc)
 
-		(tournament_doc, parameter_doc) = yaml.load_all(yamldoc)
+		try:
+			(tournament_doc, parameter_doc) = yaml.load_all(yamldoc)
+		except:
+			for idx, line in enumerate(yamldoc.splitlines()):
+				print("%-4d: %s" % (idx, line))
+			raise
 
 		#if self.debug:
 			#print("Tournament:\n")
