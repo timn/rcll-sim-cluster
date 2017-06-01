@@ -112,11 +112,11 @@ spec:
       value: !!str {{ p.magenta_recv_port }}
     - name: REFBOX_PEER_MAGENTA_SEND_PORT_{{ loop.index }}
       value: !!str {{ p.magenta_send_port }}
-{%- endfor %}
+{%- endfor -%}
 {% if refbox.disable_beacon_sender -%}
     - name: DISABLE_BEACON_SENDER
       value: !! true
-{% endif -%}
+{%- endif %}
 
     volumeMounts:
     - name: shared-navgraph

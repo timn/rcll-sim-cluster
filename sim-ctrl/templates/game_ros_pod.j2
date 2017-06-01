@@ -1,8 +1,9 @@
-{% macro ros_pod(team_name, team_color, team_config) -%}
+{% macro ros_pod(team_name, team_color, team_config) %}
 {% set color_prefix = team_color[0] -%}
 {% set fawkes_port_offset  = 0 if team_color|upper == "CYAN" else 3 -%}
 {% set refbox_peer_port_offset = 6 if team_color|upper == "CYAN" else 9 -%}
 {% if team_config.run_ros_pod -%}
+# ROS pod for team {{ team_name }} ({{ team_color }})
 - template: rcll-sim-ros
   vars:
     rcll_sim_ros_image: {{ docker_registry }}timn/rcll-sim-ros:2016-f25-kinetic

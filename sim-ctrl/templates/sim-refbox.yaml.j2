@@ -82,9 +82,9 @@ spec:
       - name: ROBOT_TIMEOUT
         value: "300"
       - name: TEAM_CYAN
-        value: {{ team_cyan }}
+        value: {{ team_cyan.name }}
       - name: TEAM_MAGENTA
-        value: {{ team_magenta }}
+        value: {{ team_magenta.name }}
       - name: ROBOTS
         value: "{{ robots|join(' ') }}"
   imagePullSecrets:

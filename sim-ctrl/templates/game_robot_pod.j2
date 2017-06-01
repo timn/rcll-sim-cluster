@@ -1,10 +1,11 @@
-{% macro robot_pod(team_name, team_color, team_config) -%}
+{% macro robot_pod(team_name, team_color, team_config) %}
 # {{ team_config.num_robots }} robot pods for team {{ team_name }} ({{ team_color }})
 {% for robot_idx in range(1, team_config.num_robots + 1) -%}
 {% set robot_suffix = team_color[0]|lower + robot_idx|string -%}
 {% set robot_name   = team_color[0]|upper + "-R" + robot_idx|string -%}
 {% set fawkes_port_offset  = 0 if team_color|upper == "CYAN" else 3 -%}
 {% set fawkes_config_offset  = 0 if team_color|upper == "CYAN" else 3 -%}
+# Robot pod {{ robot_idx }} for team {{ team_name }} ({{ team_color }})
 - template: robot-pod
   vars:
     rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic

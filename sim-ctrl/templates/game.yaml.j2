@@ -8,6 +8,9 @@
 - M-R{{ i }}
 {% endfor -%}
 {% endmacro -%}
+
+{% set docker_registry = "defiant.kbsg.rwth-aachen.de:5000/" -%}
+
 {# Import team-specific configurations #}
 {% import "team-" + team_name_cyan + ".j2" as team_cyan with context -%}
 {% import "team-" + team_name_magenta + ".j2" as team_magenta with context -%}
@@ -16,7 +19,6 @@ metadata:
   name: {{ tournament_name }}
 
 ---
-{% set docker_registry = "defiant.kbsg.rwth-aachen.de:5000/" -%}
 parameters:
 ### Common simulation base pods
 {% block sim_pod -%}
@@ -25,8 +27,15 @@ parameters:
     rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic
     robots:
       {{ robots()|indent(6) }}
-    team_cyan: {{ team_name_cyan }}
-    team_magenta: {{ team_name_magenta }}
+    team_cyan:
+      name: {{ team_name_cyan }}
+      crypto_key: {{ team_cyan.crypto_key }}
+      num_robots: {{ team_cyan.num_robots }}
+    team_magenta:
+      name: {{ team_name_magenta }}
+      crypto_key: {{ team_magenta.crypto_key }}
+      num_robots: {{ team_magenta.num_robots }}
+    gazebo_world: llsf-two-teams-default
   sufficient_containers: [run-game]
 {%- endblock %}
 
@@ -37,21 +46,21 @@ parameters:
 {% endblock %}
 
 ### Team-specific robot pods
-{% from "game_robot_pod.j2" import robot_pod with context -%}
+{% import "game_robot_pod.j2" as game_robot_pod with context -%}
 {% block robot_pods_cyan -%}
-{{ robot_pod(team_name_cyan, "CYAN", team_cyan) }}
+{{ game_robot_pod.robot_pod(team_name_cyan, "CYAN", team_cyan) }}
 {% endblock -%}
 {% block robot_pods_magenta -%}
-{{ robot_pod(team_name_magenta, "MAGENTA", team_magenta) }}
+{{ game_robot_pod.robot_pod(team_name_magenta, "MAGENTA", team_magenta) }}
 {%- endblock %}
 
 ### Optional team-specific ROS integration pods
-{%- from "game_ros_pod.j2" import ros_pod with context -%}
+{% import "game_ros_pod.j2" as game_ros_pod with context -%}
 {% block ros_pod_cyan -%}
-{{ ros_pod(team_name_cyan, "CYAN", team_cyan) }}
+{{ game_ros_pod.ros_pod(team_name_cyan, "CYAN", team_cyan) }}
 {% endblock -%}
 {% block ros_pod_magenta -%}
-{{ ros_pod(team_name_magenta, "MAGENTA", team_magenta) }}
+{{ game_ros_pod.ros_pod(team_name_magenta, "MAGENTA", team_magenta) }}
 {%- endblock %}
 
 ### Team-specific pods
