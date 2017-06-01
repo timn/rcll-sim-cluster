@@ -38,7 +38,7 @@ class SimController(object):
 		while job is not None:
 			# We do +1 here to include the one we are currently handling
 			(all_pending, without_recently_failed) = self.wq.num_pending_jobs(recently_failed_deadline)
-			print("Open jobs: %d (with recently failed: %d)" % (without_recently_failed+1, all_pending+1))
+			print("Open jobs: %d (additional recently failed: %d)" % (without_recently_failed+1, (all_pending-without_recently_failed)))
 
 			try:
 				print("Running job %s" % job["name"])
