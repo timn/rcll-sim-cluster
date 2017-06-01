@@ -45,7 +45,12 @@ class PodController(object):
 		
 		yamldoc = template.render(vars)
 		rv.append(("YAML", template_name, yamldoc))
-		manifests = yaml.load_all(yamldoc)
+		try:
+			manifests = yaml.load_all(yamldoc)
+		except:
+			print("Inflicting YAML doc:\n%s" % yamldoc)
+			raise
+
 		for manifest in manifests:
 			if manifest["kind"] == "Pod":
 				#print("Creating Pod '%s'" % manifest["metadata"]["name"])
