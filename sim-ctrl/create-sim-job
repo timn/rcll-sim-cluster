@@ -3,6 +3,7 @@
 from job_generator import JobGenerator
 
 import argparse
+from traceback import print_exc
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Job')
@@ -18,8 +19,11 @@ if __name__ == '__main__':
 	                    help='Tournament name (prefix for job names)')
 	args = parser.parse_args()
 
-	jobgen = JobGenerator(args.template, args.debug)
-	(jobname, idnum, params) = \
-	  jobgen.generate_and_store(args.tournament_name, args.team_cyan, args.team_magenta)
-
-	print("Generated %s" % jobname)
+	try:
+		jobgen = JobGenerator(args.template, args.debug)
+		(jobname, idnum, params) = \
+		    jobgen.generate_and_store(args.tournament_name, args.team_cyan, args.team_magenta)
+		print("\nGenerated %s" % jobname)
+	except:
+		print("\nFailed to generate job")
+		print_exc()

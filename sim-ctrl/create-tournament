@@ -5,6 +5,7 @@ from job_generator import JobGenerator
 import argparse
 import itertools
 import datetime
+from traceback import print_exc
 
 class TournamentGenerator(object):
 	def __init__(self, template, debug=False, dry_run=False):
@@ -22,10 +23,15 @@ class TournamentGenerator(object):
 		num_games = 0
 		print("Number of pairings: %d" % len(pairings))
 		for p in self.pairings_iterator(pairings, n):
-			num_games += 1
-			(jobname, idnum, params) = self.jobgen.generate_and_store(tournament_name,
-			                                                          team_cyan=p[0], team_magenta=p[1])
-			print("- %s" % jobname)
+			try:
+				(jobname, idnum, params) = self.jobgen.generate_and_store(tournament_name,
+				                                                          team_cyan=p[0], team_magenta=p[1])
+				num_games += 1
+				print("- %s" % jobname)
+			except:
+				print("\nFailed to generate job %d: %s vs %s" % (p[0], p[1], num_games+1))
+				print_exc()
+
 		print("Total number of games: %d" % num_games)
 
 		if time_per_game > 0:
