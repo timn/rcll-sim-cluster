@@ -15,7 +15,7 @@ spec:
       - name: MONGODB_RS
         value: rs0
       - name: MONGODB_RS_SRV
-        value: _mongodb._tcp.mongodb
+        value: _mongodb._tcp.mongodb.database
       volumeMounts:
       - name: ssh-authkeys
         mountPath: /root/.ssh
