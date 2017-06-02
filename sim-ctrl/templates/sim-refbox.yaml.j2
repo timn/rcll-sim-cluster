@@ -92,6 +92,13 @@ spec:
           command: ["sh", "-c", "gz topic -l | grep time-sync"]
         initialDelaySeconds: 10
         failureThreshold: 15
+      resources:
+        requests:
+          memory: "1.5Gi"
+          cpu: "600m"
+        limits:
+          memory: "2Gi"
+          cpu: "1"
     - name: mongodb-refbox
       image: mongo:3
       command: ["mongod", "--smallfiles", "--noprealloc"]
@@ -109,6 +116,13 @@ spec:
           mountPath: /opt/llsf-refbox/cfg/conf.d
         #- name: refbox-export-dir
         #  mountPath: /data/db-export
+      resources:
+        requests:
+          memory: "200Mi"
+          cpu: "40m"
+        limits:
+          memory: "400Mi"
+          cpu: "400m"
 
     - name: comm-proxy
       image: {{ rcll_sim_image }}
@@ -124,6 +138,13 @@ spec:
           port: 1910
         initialDelaySeconds: 10
         failureThreshold: 10
+      resources:
+        requests:
+          memory: "200Mi"
+          cpu: "30m"
+        limits:
+          memory: "300Mi"
+          cpu: "100m"
 
     - name: run-game
       image: {{ rcll_sim_image }}
