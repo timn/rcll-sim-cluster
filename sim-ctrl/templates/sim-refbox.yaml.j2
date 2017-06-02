@@ -72,6 +72,8 @@ metadata:
     simulation: rcll
     database: mongodb
     mongodb-for: refbox
+  annotations:
+    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
   hostname: rcll-sim
   containers:

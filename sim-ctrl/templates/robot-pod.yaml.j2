@@ -50,6 +50,7 @@ metadata:
     robot: {{ robot.name }}
     app: fawkes
   annotations:
+    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
     pod.beta.kubernetes.io/init-containers: '[
         {
           "name": "wait-for-rcll-sim",

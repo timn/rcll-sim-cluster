@@ -51,6 +51,8 @@ metadata:
   labels:
     app: ros
     robot: central
+  annotations:
+    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
   hostname: rcll-sim-ros-{{ team.color|lower }}
 
