@@ -26,6 +26,24 @@ spec:
   - port: 4444
 ---
 apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-refbox
+  namespace: {{ namespace }}
+  labels:
+    app: mongodb
+    mongodb-for: refbox
+spec:
+  ports:
+  - name: mongodb
+    port: 27017
+    targetPort: 27017
+  clusterIP: None
+  selector:
+    database: mongodb
+    mongodb-for: refbox
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: refbox-config
@@ -38,6 +56,10 @@ data:
         crypto-keys:
           {{ team_cyan.name }}: "{{ team_cyan.crypto_key }}"
           {{ team_magenta.name }}: "{{ team_magenta.crypto_key }}"
+  mongodb.yaml: |
+    llsfrb:
+      mongodb:
+        enable: true
 ---
 apiVersion: v1
 kind: Pod
@@ -48,6 +70,8 @@ metadata:
     refbox: rcll
     app: gazebo
     simulation: rcll
+    database: mongodb
+    mongodb-for: refbox
 spec:
   hostname: rcll-sim
   containers:
@@ -66,13 +90,23 @@ spec:
           command: ["sh", "-c", "gz topic -l | grep time-sync"]
         initialDelaySeconds: 10
         failureThreshold: 15
+    - name: mongodb-refbox
+      image: mongo:3
+      command: ["mongod", "--smallfiles", "--noprealloc"]
+      ports:
+        - containerPort: 27017
+      volumeMounts:
+        - name: mongodb-refbox-storage
+          mountPath: /data/db
     - name: refbox
       image: {{ rcll_sim_image }}
       command: ["/opt/rcll-sim/run-component"]
       args: ["refbox"]
       volumeMounts:
-      - name: refbox-config-volume
-        mountPath: /opt/llsf-refbox/cfg/conf.d
+        - name: refbox-config-volume
+          mountPath: /opt/llsf-refbox/cfg/conf.d
+        #- name: refbox-export-dir
+        #  mountPath: /data/db-export
 
     - name: comm-proxy
       image: {{ rcll_sim_image }}
@@ -94,6 +128,8 @@ spec:
       command: ["/opt/rcll-sim/run-component"]
       args: ["run-game"]
       env:
+      - name: JOB_NAME
+        value: {{ job_name }}
       - name: REFBOX_SETUP_TIMEOUT
         value: "300"
       #- name: PREPARE_TIMEOUT
@@ -106,10 +142,40 @@ spec:
         value: {{ team_magenta.name }}
       - name: ROBOTS
         value: "{{ robots|join(' ') }}"
+      - name: REFBOX_MONGODB_HOST
+        value: localhost
+      - name: REFBOX_MONGODB_PORT
+        value: "27017"
+      - name: REFBOX_MONGODB_DATABASE
+        value: llsfrb
+      - name: REFBOX_MONGODB_COLLECTION
+        value: game_report
+      - name: CLUSTER_MONGODB_RS
+        value: rs0
+      - name: CLUSTER_MONGODB_RS_SRV
+        value: _mongodb._tcp.mongodb.database
+      - name: CLUSTER_MONGODB_DATABASE
+        value: refbox
+      - name: CLUSTER_MONGODB_COLLECTION
+        value: game_report
+      - name: CLUSTER_MONGODB_MODIFICATION
+        value: '{ "job_name": "{{ job_name }}" }'
+
   volumes:
     - name: refbox-config-volume
       configMap:
         name: refbox-config
+    #- name: refbox-export-dir
+    #  cephfs:
+    #    monitors:
+    #    - ceph-mon.ceph.svc.cluster.local
+    #    user: admin
+    #    secretRef:
+    #      name: ceph-client-key
+    #    path: /refbox-db-export/
+    - name: mongodb-refbox-storage
+      emptyDir: {}
+
   imagePullSecrets:
     - name: regsecret
   restartPolicy: Never
