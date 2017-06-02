@@ -47,6 +47,7 @@ class SimController(object):
 				num_items = { "YAML": 0, "Pod": 0, "Container": 0, "Service": 0, "Ingress": 0, "ConfigMap": 0 }
 				for i in job["params"]["template_parameters"]:
 					i["vars"]["namespace"] = self.config.kube_namespace
+					i["vars"]["job_name"] = job["name"]
 					print("  - template: %s" % i["template"])
 					sufficient_containers = i["sufficient_containers"] if "sufficient_containers" in i else []
 					items = self.podctrl.create_from_template(i["template"], i["vars"],
