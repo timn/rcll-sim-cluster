@@ -171,24 +171,38 @@ class PodController(object):
 		print("Deleting items")
 		for uid in self.pods:
 			print("  - Pod %s:%s" % uid)
-			res = self.core_api.delete_namespaced_pod(namespace = uid[0],
-			                                          name = uid[1],
-			                                          body = V1DeleteOptions())
+			try:
+				res = self.core_api.delete_namespaced_pod(namespace = uid[0],
+				                                          name = uid[1],
+				                                          body = V1DeleteOptions())
+			except:
+				print("    (issue cleaning up, ignored)")
 
 		for uid in self.services:
 			print("  - Service %s:%s" % uid)
-			res = self.core_api.delete_namespaced_service(namespace = uid[0], name = uid[1])
+			try:
+				res = self.core_api.delete_namespaced_service(namespace = uid[0], name = uid[1])
+			except:
+				print("    (issue cleaning up, ignored)")
+
 
 		for uid in self.ingress:
 			print("  - Ingress %s:%s" % uid)
-			res = self.beta1_api.delete_namespaced_ingress(namespace = uid[0], name = uid[1],
-			                                               body = V1DeleteOptions())
+			try:
+				res = self.beta1_api.delete_namespaced_ingress(namespace = uid[0], name = uid[1],
+				                                               body = V1DeleteOptions())
+			except:
+				print("    (issue cleaning up, ignored)")
+
 
 		for uid in self.config_maps:
 			print("  - ConfigMap %s:%s" % uid)
-			res = self.core_api.delete_namespaced_config_map(namespace = uid[0],
-			                                                 name = uid[1],
-			                                                 body = V1DeleteOptions())
+			try:
+				res = self.core_api.delete_namespaced_config_map(namespace = uid[0],
+				                                                 name = uid[1],
+				                                                 body = V1DeleteOptions())
+			except:
+				print("    (issue cleaning up, ignored)")
 
 		# Not checking for possibly deleted pods, pods take a while to
 		# delete and they will not be listed anymore
