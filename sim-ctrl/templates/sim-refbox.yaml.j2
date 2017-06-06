@@ -114,8 +114,6 @@ spec:
       volumeMounts:
         - name: refbox-config-volume
           mountPath: /opt/llsf-refbox/cfg/conf.d
-        #- name: refbox-export-dir
-        #  mountPath: /data/db-export
       resources:
         requests:
           memory: "200Mi"
@@ -173,6 +171,8 @@ spec:
         value: llsfrb
       - name: REFBOX_MONGODB_COLLECTION
         value: game_report
+      - name: REFBOX_MONGODB_DO_EXPORT
+        value: "{{ refbox_export|default("false") }}"
       - name: CLUSTER_MONGODB_RS
         value: rs0
       - name: CLUSTER_MONGODB_RS_SRV
@@ -184,18 +184,23 @@ spec:
       - name: CLUSTER_MONGODB_MODIFICATION
         value: '{ "job_name": "{{ job_name }}" }'
 
+      volumeMounts:
+        - name: refbox-export-dir
+          mountPath: /data/db-export
+
   volumes:
     - name: refbox-config-volume
       configMap:
         name: refbox-config
-    #- name: refbox-export-dir
-    #  cephfs:
-    #    monitors:
-    #    - ceph-mon.ceph.svc.cluster.local
-    #    user: admin
-    #    secretRef:
-    #      name: ceph-client-key
-    #    path: /refbox-db-export/
+    - name: refbox-export-dir
+      cephfs:
+        monitors:
+        - ceph-mon.ceph.svc.cluster.local
+        user: admin
+        secretRef:
+          name: ceph-client-key
+        # Note that the path must already exist in cephfs
+        path: /refbox-db-export/
     - name: mongodb-refbox-storage
       emptyDir: {}
 
