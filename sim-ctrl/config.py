@@ -11,7 +11,7 @@ class Configuration(object):
 		self.mongodb_queue_col = self.value("MONGODB_QUEUE_COLLECTION", "q")
 		self.mongodb_rs_srv = self.value("MONGODB_RS_SRV")
 		self.template_path = self.value("TEMPLATE_PATH", "/opt/rcll-sim-ctrl/templates")
-		self.kube_namespace = self.value("KUBERNETES_NAMESPACE", "default")
+		self.kube_namespace = self.value("NAMESPACE", "default")
 
 	def value(self, key, default=None):
 		if key in os.environ:
