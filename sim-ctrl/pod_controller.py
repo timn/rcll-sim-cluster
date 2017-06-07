@@ -21,7 +21,7 @@ class PodController(object):
 		self.config_maps = {}
 
 		self.jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(config.template_path),
-										autoescape=False)
+										autoescape=False, extensions=['jinja2.ext.with_'])
 
 	def wait_pod_event(self, namespace, name, cond):
 		w = Watch()
