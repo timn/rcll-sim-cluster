@@ -36,5 +36,5 @@ if __name__ == '__main__':
 		(all_pending, without_recently_failed) = wq.num_pending_jobs(recently_failed_deadline)
 		
 		print("Open jobs: %d (additional recently failed: %d)" \
-		      % (without_recently_failed+1, (all_pending-without_recently_failed)))
+		      % (without_recently_failed, (all_pending-without_recently_failed)))
 
