@@ -6,13 +6,23 @@ from config import Configuration
 
 import os
 import argparse
+import time
+import kubernetes
 from datetime import datetime, timedelta
 from traceback import print_exc
+from kubernetes.client import V1DeleteOptions
 
 class SimController(object):
-	def __init__(self, include_recently_failed=False):
+	def __init__(self, include_recently_failed=False, job_namespace=None):
 		self.config	= Configuration()
 		self.include_recently_failed = include_recently_failed
+		self.namespace = self.config.kube_namespace
+		self.job_namespace = job_namespace or self.config.kube_namespace
+		if self.job_namespace == "auto":
+			name_prefix = "rcll-sim-"
+			if "JOB_NAMESPACE_PREFIX" in os.environ:
+				name_prefix = os.environ["JOB_NAMESPACE_PREFIX"]
+			self.job_namespace = self.generate_namespace_name(name_prefix)
 
 		# The work queue will figure out a valid combination of MongoDB access
 		# parameters, e.g., host/port, URI, or replica set discovery via DNS
@@ -26,11 +36,92 @@ class SimController(object):
 
 		self.podctrl = PodController(self.config)
 
-		# Create this controllers namespace
-		# Assume namespace has been created as part of the invoking pod
-		# self.podctrl.create_namespace(config.kube_namespace)
+	def __enter__(self):
+		if self.job_namespace != "default":
+			self.create_namespace()
+		self.initialized = True
+		return self
 
+	def __exit__(self, exc_type, exc_value, traceback):
+		if self.job_namespace != "default":
+			self.delete_namespace()
+		self.initialized = False
+
+	def generate_namespace_name(self, name_prefix):
+		kube_config = kubernetes.config.load_incluster_config()
+		core_api = kubernetes.client.CoreV1Api()
+		batch_api = kubernetes.client.BatchV1Api()
+
+		pod_name  = os.environ["POD_NAME"]
+
+		pod = core_api.read_namespaced_pod(pod_name, self.namespace)
+		job_name = pod.metadata.labels["job-name"]
+		job = batch_api.read_namespaced_job(job_name, self.namespace)
+
+		parallelism = job.spec.parallelism
+		label_selector_dict = dict(job.spec.selector.match_labels)
+		label_selector_str = ",".join(["%s=%s" % (key,value) for (key,value) in label_selector_dict.items()])
+		field_selector_str="status.phase=Running"
+
+		num_tries = 0
+		pods=[]
+		while num_tries < 30:
+			all_pods = core_api.list_namespaced_pod(self.namespace,
+			                                        label_selector=label_selector_str,
+			                                        field_selector=field_selector_str)
+			pods = list(map(lambda p: p.metadata.name, all_pods.items))
+			if len(pods) == parallelism:
+				break
+			else:
+				num_tries += 1
+				time.sleep(1)
+
+		pods.sort()
+
+		if len(pods) == parallelism:
+			index = pods.index(pod_name)
+			return "%s%d" % (name_prefix, index)
+		else:
+			raise Exception("Failed to determine pod index")
+
+	def create_namespace(self):
+		print("Creating namespace '%s'" % self.job_namespace)
+		kube_config = kubernetes.config.load_incluster_config()
+		core_api = kubernetes.client.CoreV1Api()
+		manifest = {"kind": "Namespace", "apiVersion": "v1", "metadata": { "name": self.job_namespace } }
+		core_api.create_namespace(manifest)
+		if "JOB_NAMESPACE_COPY_SECRETS" in os.environ:
+			secrets = os.environ["JOB_NAMESPACE_COPY_SECRETS"].split(' ')
+			for s in secrets:
+				print("  - copying secret '%s' from '%s'" % (s, self.namespace))
+				self.copy_secret(s, self.namespace, self.job_namespace)
+
+	def delete_namespace(self):
+		print("Deleting namespace '%s'" % self.job_namespace)
+		kube_config = kubernetes.config.load_incluster_config()
+		core_api = kubernetes.client.CoreV1Api()
+		try:
+			core_api.delete_namespace(name=self.job_namespace, body = V1DeleteOptions())
+		except:
+			pass
+
+	def copy_secret(self, name, from_namespace, to_namespace):
+		kube_config = kubernetes.config.load_incluster_config()
+		core_api = kubernetes.client.CoreV1Api()
+		secret = core_api.read_namespaced_secret(name, from_namespace)
+		manifest = {
+			"kind": "Secret",
+			"apiVersion": "v1",
+			"metadata": { "name": name },
+			"data": dict(secret.data)
+		}
+		core_api.create_namespaced_secret(to_namespace, manifest)
+
+		
 	def run(self):
+		if not self.initialized:
+			raise Exception("Must use 'with' statement to use instance")
+
 		recently_failed_deadline=None
 		if not self.include_recently_failed:
 			recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
@@ -41,12 +132,12 @@ class SimController(object):
 			print("Open jobs: %d (additional recently failed: %d)" % (without_recently_failed+1, (all_pending-without_recently_failed)))
 
 			try:
-				print("Running job %s" % job["name"])
+				print("Running job %s in namespace %s" % (job["name"], self.job_namespace))
 				start_time = datetime.now()
 				manifests=[]
 				num_items = { "YAML": 0, "Pod": 0, "Container": 0, "Service": 0, "Ingress": 0, "ConfigMap": 0 }
 				for i in job["params"]["template_parameters"]:
-					i["vars"]["namespace"] = self.config.kube_namespace
+					i["vars"]["namespace"] = self.job_namespace
 					i["vars"]["job_name"] = job["name"]
 					print("  - template: %s" % i["template"])
 					sufficient_containers = i["sufficient_containers"] if "sufficient_containers" in i else []
@@ -93,7 +184,9 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Run RCLL Cluster Sim Jobs')
 	parser.add_argument('--include-recently-failed', action='store_true',
 	                    help='Allow execution of recently failed jobs.')
+	parser.add_argument('--namespace',
+	                    help='Namespace for created pods.')
 	args = parser.parse_args()
 
-	sim_ctrl = SimController(args.include_recently_failed)
-	sim_ctrl.run()
+	with SimController(args.include_recently_failed, args.namespace) as sim_ctrl:
+		sim_ctrl.run()
