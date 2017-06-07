@@ -224,7 +224,7 @@ class PodController(object):
 				                                               body = V1DeleteOptions())
 			except:
 				print("    (issue cleaning up, ignored)")
-
+		self.ingress = {}
 
 		for uid in self.config_maps:
 			print("  - ConfigMap %s:%s" % uid)
@@ -234,6 +234,7 @@ class PodController(object):
 				                                                 body = V1DeleteOptions())
 			except:
 				print("    (issue cleaning up, ignored)")
+		self.config_maps = {}
 
 		for name in self.namespaces:
 			print("  - Namespace %s" % name)
