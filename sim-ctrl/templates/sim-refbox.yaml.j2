@@ -151,6 +151,8 @@ spec:
       env:
       - name: JOB_NAME
         value: {{ job_name }}
+      - name: KUBERNETES_NAMESPACE
+        value: {{ namespace }}
       - name: REFBOX_SETUP_TIMEOUT
         value: "300"
       #- name: PREPARE_TIMEOUT
