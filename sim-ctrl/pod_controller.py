@@ -14,6 +14,7 @@ class PodController(object):
 		self.kube_config = kubernetes.config.load_incluster_config()
 		self.core_api = kubernetes.client.CoreV1Api()
 		self.beta1_api = kubernetes.client.ExtensionsV1beta1Api()
+		self.namespaces = {}
 		self.pods = {}
 		self.services = {}
 		self.ingress = {}
@@ -52,7 +53,17 @@ class PodController(object):
 			raise
 
 		for manifest in manifests:
-			if manifest["kind"] == "Pod":
+			if manifest["kind"] == "Namespace":
+				#print("Creating Namespace '%s'" % manifest["metadata"]["name"])
+				print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
+				try:
+					self.create_namespace(manifest)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
+				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
+
+			elif manifest["kind"] == "Pod":
 				#print("Creating Pod '%s'" % manifest["metadata"]["name"])
 				s = manifest["metadata"]["name"] + " (" \
 				    + ",".join(["{}{}".format("*" if c["name"] in sufficient_containers else "", c["name"])
@@ -102,16 +113,31 @@ class PodController(object):
 			#print("%s\n\n" % str(manifest))
 		return rv
 
-	def create_namespace(self, namespace):
-		body = {
-			"kind": "Namespace",
-			"apiVersion": "v1",
-			"metadata": {
-				"name": namespace
-			}
-		}
+	def create_namespace(self, manifest=None, name=None):
 		try:
-			res = self.core_api.create_namespace(body)
+			if name is not None:
+				manifest = {
+					"kind": "Namespace",
+					"apiVersion": "v1",
+					"metadata": {
+						"name": name
+					}
+				}
+			namespaces = self.core_api.list_namespace()
+			exists=False
+			for n in namespaces.items:
+				if n.metadata.name == manifest["metadata"]["name"]:
+					exists=True
+					break
+
+			if not exists:
+				res = self.core_api.create_namespace(manifest)
+
+			self.namespaces[manifest["metadata"]["name"]] = \
+			{ "phase": "Created",
+			  "status": "Created",
+			  "manifest": manifest,
+			}
 		except ApiException as e:
 			print("Failed to create namespace %s: '%s'" % (namespace, e))
 			raise e
@@ -166,6 +192,11 @@ class PodController(object):
 			                                                   manifest["metadata"]["name"], e))
 			raise e
 
+	def delete_namespace(self, manifest=None, name=None):
+		if manifest is not None and name is None:
+			name = manifest["metadata"]["name"]
+		res = self.core_api.delete_namespace(name=name, body = V1DeleteOptions())
+
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
 		print("Deleting items")
@@ -203,6 +234,14 @@ class PodController(object):
 				                                                 body = V1DeleteOptions())
 			except:
 				print("    (issue cleaning up, ignored)")
+
+		for name in self.namespaces:
+			print("  - Namespace %s" % name)
+			try:
+				res = self.core_api.delete_namespace(name=name, body = V1DeleteOptions())
+			except:
+				print("    (issue cleaning up, ignored)")
+		self.namespaces = {}
 
 		# Not checking for possibly deleted pods, pods take a while to
 		# delete and they will not be listed anymore
