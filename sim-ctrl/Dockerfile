@@ -15,4 +15,4 @@ RUN \
 
 RUN mkdir -p /opt/rcll-sim-ctrl
 COPY templates /opt/rcll-sim-ctrl/templates
-COPY *.py run-sim-jobs create-sim-job print-job-info create-tournament Dockerfile /opt/rcll-sim-ctrl/
+COPY *.py run-sim-jobs create-sim-job create-tournament print-job-info Dockerfile /opt/rcll-sim-ctrl/
