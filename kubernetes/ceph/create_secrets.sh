@@ -12,7 +12,7 @@ kubectl create secret generic ceph-bootstrap-osd-keyring --from-file=ceph.keyrin
 kubectl create secret generic ceph-client-key --from-file=ceph-client-key --namespace=ceph
 kubectl create secret generic ceph-client-key --from-file=ceph-client-key --namespace=default
 kubectl create secret generic ceph-client-key --from-file=ceph-client-key --namespace=kube-system
-kubectl create namespace database
+#kubectl create namespace database
 kubectl create secret generic ceph-client-key --from-file=ceph-client-key --namespace=database
 kubectl create secret generic ceph-admin-secret --from-literal=key="$(cat ceph-client-key)" --type=kubernetes.io/rbd --namespace=kube-system
 
