@@ -74,6 +74,13 @@ spec:
     env:
     - name: ROS_MASTER_URI
       value: http://localhost:{{ ros.port }}
+    resources:
+      requests:
+        memory: "200Mi"
+        cpu: "30m"
+      limits:
+        memory: "200Mi"
+        cpu: "60m"
   - name: fawkes
     image: {{ robot_pod_image }}
     #imagePullPolicy: Always
@@ -90,6 +97,14 @@ spec:
       value: http://gazebo:11345
     - name: ROS_MASTER_URI
       value: http://localhost:{{ ros.port }}
+
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "800m"
+      limits:
+        memory: "1.5Gi"
+        cpu: "1000m"
 
     readinessProbe:
       tcpSocket:

@@ -41,6 +41,14 @@ spec:
     - name: AUTOSTART_PLANNING
       value: !!str {{ autostart_planning }}
 
+    resources:
+      requests:
+        memory: "8Gi"
+        cpu: "2"
+      limits:
+        memory: "8Gi"
+        cpu: "2"
+
   imagePullSecrets:
     - name: regsecret
   restartPolicy: Never

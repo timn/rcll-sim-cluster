@@ -69,6 +69,13 @@ spec:
     env:
     - name: ROS_MASTER_URI
       value: http://localhost:{{ ros.port }}
+    resources:
+      requests:
+        memory: "200Mi"
+        cpu: "30m"
+      limits:
+        memory: "200Mi"
+        cpu: "60m"
 
   - name: roslaunch-integration
     image: {{ rcll_sim_ros_image }}
@@ -120,6 +127,14 @@ spec:
       value: !! true
 {%- endif %}
 
+    resources:
+      requests:
+        memory: "200Mi"
+        cpu: "20m"
+      limits:
+        memory: "200Mi"
+        cpu: "40m"
+
     volumeMounts:
     - name: shared-navgraph
       mountPath: /run/navgraph
@@ -135,6 +150,14 @@ spec:
       value: {{ navgraph_rosmaster }}
     - name: NAVGRAPH_FILE
       value: /run/navgraph/navgraph-generated.yaml
+
+    resources:
+      requests:
+        memory: "100Mi"
+        cpu: "10m"
+      limits:
+        memory: "100Mi"
+        cpu: "40m"
 
     volumeMounts:
     - name: shared-navgraph
