@@ -1,3 +1,5 @@
+{# Run gzweb only once -#}
+{% if namespace == gzweb_namespace or namespace == "default" -%}
 apiVersion: v1
 kind: Service
 metadata:
@@ -101,3 +103,4 @@ spec:
   imagePullSecrets:
     - name: regsecret
   restartPolicy: Never
+{% endif -%}

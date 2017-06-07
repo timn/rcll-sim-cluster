@@ -44,6 +44,8 @@ parameters:
 - template: gzweb
   vars:
     gzweb_image: {{ docker_registry }}timn/gzweb:7
+    # run gzweb only for first namespace atm
+    gzweb_namespace: rcll-sim-0
 {% endblock %}
 
 ### Team-specific robot pods
