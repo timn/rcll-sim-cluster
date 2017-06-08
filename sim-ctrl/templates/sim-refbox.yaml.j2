@@ -24,6 +24,7 @@ spec:
   clusterIP: None
   ports:
   - port: 4444
+{% if refbox.enable_mongodb -%}
 ---
 apiVersion: v1
 kind: Service
@@ -42,6 +43,7 @@ spec:
   selector:
     database: mongodb
     mongodb-for: refbox
+{% endif -%}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -56,10 +58,12 @@ data:
         crypto-keys:
           {{ team_cyan.name }}: "{{ team_cyan.crypto_key }}"
           {{ team_magenta.name }}: "{{ team_magenta.crypto_key }}"
+{% if refbox.enable_mongodb -%}
   mongodb.yaml: |
     llsfrb:
       mongodb:
         enable: true
+{% endif -%}
 ---
 apiVersion: v1
 kind: Pod
@@ -70,8 +74,10 @@ metadata:
     refbox: rcll
     app: gazebo
     simulation: rcll
+{% if refbox.enable_mongodb -%}
     database: mongodb
     mongodb-for: refbox
+{% endif -%}
   annotations:
     scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
@@ -99,6 +105,7 @@ spec:
         limits:
           memory: "2Gi"
           cpu: "1"
+{% if refbox.enable_mongodb -%}
     - name: mongodb-refbox
       image: mongo:3
       command: ["mongod", "--smallfiles", "--noprealloc"]
@@ -107,11 +114,16 @@ spec:
       volumeMounts:
         - name: mongodb-refbox-storage
           mountPath: /data/db
+{% endif -%}
     - name: refbox
       image: {{ rcll_sim_image }}
       command: ["/opt/rcll-sim/run-component"]
       args: ["refbox"]
       env:
+      - name: REFBOX_MONGODB_HOST
+        value: localhost
+      - name: REFBOX_MONGODB_PORT
+        value: "27017"
       - name: REFBOX_MONGODB_WAIT
         value: "{{ refbox.enable_mongodb|lower }}"
       volumeMounts:
@@ -177,7 +189,7 @@ spec:
       - name: REFBOX_MONGODB_COLLECTION
         value: game_report
       - name: REFBOX_MONGODB_DO_EXPORT
-        value: "{{ refbox_export|default("false") }}"
+        value: "{{ refbox.enable_mongodb|default("false") }}"
       - name: CLUSTER_MONGODB_RS
         value: rs0
       - name: CLUSTER_MONGODB_RS_SRV

@@ -36,7 +36,8 @@ parameters:
       crypto_key: {{ team_magenta.crypto_key }}
       num_robots: {{ team_magenta.num_robots }}
     gazebo_world: llsf-two-teams-default
-    refbox_export: "true"
+    refbox:
+      enable_mongodb: true
   sufficient_containers: [run-game]
 {%- endblock %}
 
