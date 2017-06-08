@@ -111,6 +111,9 @@ spec:
       image: {{ rcll_sim_image }}
       command: ["/opt/rcll-sim/run-component"]
       args: ["refbox"]
+      env:
+      - name: REFBOX_MONGODB_WAIT
+        value: "{{ refbox.enable_mongodb|lower }}"
       volumeMounts:
         - name: refbox-config-volume
           mountPath: /opt/llsf-refbox/cfg/conf.d
