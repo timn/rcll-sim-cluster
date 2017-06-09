@@ -188,5 +188,17 @@ if __name__ == '__main__':
 	                    help='Namespace for created pods.')
 	args = parser.parse_args()
 
-	with SimController(args.include_recently_failed, args.namespace) as sim_ctrl:
+	job_namespace = "default"
+	if "JOB_NAMESPACE" in os.environ:
+		job_namespace = os.environ["JOB_NAMESPACE"]
+	if args.namespace:
+		job_namespace = args.namespace
+
+	include_recently_failed = False
+	if "RUN_ALSO_RECENTLY_FAILED" in os.environ and os.environ["RUN_ALSO_RECENTLY_FAILED"].lower == "true":
+		include_recently_failed = True
+	if args.include_recently_failed:
+		include_recently_failed = True
+
+	with SimController(include_recently_failed, job_namespace) as sim_ctrl:
 		sim_ctrl.run()
