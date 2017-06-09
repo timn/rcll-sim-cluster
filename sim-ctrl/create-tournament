@@ -65,6 +65,8 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	print("Generating tournament '%s'" % args.name)
+	if args.dry_run:
+		print("\n*** ATTENTION: This is a dry run, no jobs actually stored ***\n")
 	tg = TournamentGenerator(args.template, debug=args.debug, dry_run=args.dry_run)
 	tg.generate(args.name, args.teams, args.iterations,
 	            time_per_game=args.time_per_game, num_concurrent_games=args.num_concurrent_games)
