@@ -11,7 +11,7 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Print job info')
 	parser.add_argument('--open', action='store_true',
 	                    help='Show open jobs.')
-	parser.add_argument('job_name', metavar="JOB-NAME", nargs='*',
+	parser.add_argument('job_names', metavar="JOB-NAME", nargs='*',
 	                    help='Name of job to retrieve info for.')
 	args = parser.parse_args()
 
@@ -24,12 +24,14 @@ if __name__ == '__main__':
 	               replicaset=config.mongodb_rs,
 	               collection=config.mongodb_queue_col)
 
-	if args.job_name:
-		item =  wq.get_specific_item(args.job_name)
-		if item is None:
-			print("Failed to retrieve item with name '%s'" % args.job_name)
-		else:
-			pprint(item)
+	if args.job_names:
+		for job_name in args.job_names:
+			item =  wq.get_specific_item(job_name)
+			if item is None:
+				print("Failed to retrieve item with name '%s'" % args.job_name)
+			else:
+				print("*** Job %s ***" % job_name)
+				pprint(item)
 
 	if args.open:
 		recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
