@@ -46,6 +46,10 @@ class JobGenerator(object):
 			.format(index, width=suffix_length, tournament_name=tournament_name,
 			        team_cyan=team_cyan, team_magenta=team_magenta)
 
+	@staticmethod
+	def id_regex(tournament_name):
+		return "^%s:\d+:.*" % tournament_name
+
 	def generate(self, tournament_name, team_cyan, team_magenta):
 		param_vars = {
 			"tournament_name": tournament_name,
