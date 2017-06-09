@@ -2,6 +2,7 @@
 
 from work_queue import WorkQueue
 from pod_controller import PodController
+from job_generator import JobGenerator
 from config import Configuration
 
 import os
@@ -13,7 +14,7 @@ from traceback import print_exc
 from kubernetes.client import V1DeleteOptions
 
 class SimController(object):
-	def __init__(self, include_recently_failed=False, job_namespace=None):
+	def __init__(self, include_recently_failed=False, job_namespace=None, tournament=None):
 		self.config	= Configuration()
 		self.include_recently_failed = include_recently_failed
 		self.namespace = self.config.kube_namespace
@@ -23,6 +24,10 @@ class SimController(object):
 			if "JOB_NAMESPACE_PREFIX" in os.environ:
 				name_prefix = os.environ["JOB_NAMESPACE_PREFIX"]
 			self.job_namespace = self.generate_namespace_name(name_prefix)
+
+		self.tournament_regex = None
+		if tournament is not None:
+			self.tournament_regex = JobGenerator.id_regex(tournament)
 
 		# The work queue will figure out a valid combination of MongoDB access
 		# parameters, e.g., host/port, URI, or replica set discovery via DNS
@@ -125,11 +130,15 @@ class SimController(object):
 		recently_failed_deadline=None
 		if not self.include_recently_failed:
 			recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
-		job = self.wq.get_next_item(recently_failed_deadline)
+		if self.tournament_regex is not None:
+			print("Filtering job names by '%s'" % self.tournament_regex)
+		job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
 		while job is not None:
 			# We do +1 here to include the one we are currently handling
-			(all_pending, without_recently_failed) = self.wq.num_pending_jobs(recently_failed_deadline)
-			print("Open jobs: %d (additional recently failed: %d)" % (without_recently_failed+1, (all_pending-without_recently_failed)))
+			(all_pending, without_recently_failed) = \
+			    self.wq.num_pending_jobs(recently_failed_deadline, name_regex=self.tournament_regex)
+			print("Open jobs: %d (additional recently failed: %d)" \
+			      % (without_recently_failed+1, (all_pending-without_recently_failed)))
 
 			try:
 				print("Running job %s in namespace %s" % (job["name"], self.job_namespace))
@@ -177,7 +186,7 @@ class SimController(object):
 
 			if not self.include_recently_failed:
 				recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
-			job = self.wq.get_next_item(recently_failed_deadline)
+			job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
 		print("No more open jobs")
 
 if __name__ == '__main__':
@@ -186,6 +195,8 @@ if __name__ == '__main__':
 	                    help='Allow execution of recently failed jobs.')
 	parser.add_argument('--namespace',
 	                    help='Namespace for created pods.')
+	parser.add_argument('--tournament',
+	                    help='Run only jobs for specified tournament.')
 	args = parser.parse_args()
 
 	job_namespace = "default"
@@ -194,11 +205,17 @@ if __name__ == '__main__':
 	if args.namespace:
 		job_namespace = args.namespace
 
+	tournament = None
+	if "TOURNAMENT" in os.environ:
+		tournament = os.environ["TOURNAMENT"]
+	if args.tournament:
+		tournament = args.tournament
+
 	include_recently_failed = False
 	if "RUN_ALSO_RECENTLY_FAILED" in os.environ and os.environ["RUN_ALSO_RECENTLY_FAILED"].lower == "true":
 		include_recently_failed = True
 	if args.include_recently_failed:
 		include_recently_failed = True
 
-	with SimController(include_recently_failed, job_namespace) as sim_ctrl:
+	with SimController(include_recently_failed, job_namespace, tournament=tournament) as sim_ctrl:
 		sim_ctrl.run()
