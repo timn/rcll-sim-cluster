@@ -90,7 +90,7 @@ spec:
     - name: CONFIG
       value: gazsim-configurations/default/robotino{{ fawkes.config_num }}.yaml
     - name: META_PLUGIN
-      value: {{ fawkes.plugins|default("gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-meta-agent,gazsim-navgraph-generator") }}
+      value: gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-navgraph-generator{% if fawkes.plugins is defined %},{{ fawkes.plugins }}{% endif %}
     - name: LOG_LEVEL
       value: debug
     - name: GAZEBO_MASTER_URI
