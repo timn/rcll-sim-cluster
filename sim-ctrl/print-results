@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+
+from work_queue import WorkQueue
+from config import Configuration
+
+import argparse
+from datetime import datetime, timedelta
+from pprint import pprint
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='Print job info')
+	parser.add_argument('--tournament', metavar='T-NAME', required=True,
+	                    help='Name of simulation tournament')
+	parser.add_argument('--teams', action='store_true',
+	                    help='Show participating teams.')
+	parser.add_argument('--individual-games', action='store_true',
+	                    help='Show results of individual games.')
+	args = parser.parse_args()
+
+	config = Configuration()
+	wq = WorkQueue(host=config.mongodb_host,
+	               port=config.mongodb_port,
+	               uri=config.mongodb_uri,
+	               srv_name=config.mongodb_rs_srv,
+	               database=config.mongodb_queue_db,
+	               replicaset=config.mongodb_rs,
+	               collection=config.mongodb_queue_col)
+
+	refbox_db = wq.client["refbox"]
+	game_report_collection = refbox_db["game_report"]
+
+	tournament_regex = { "$regex": "^%s:\d+:.*" % args.tournament}
+	tournament_filter = {"name": tournament_regex}
+
+	if args.teams:
+		print("\n*** Teams ***")
+		teams = game_report_collection.distinct("teams", {"job_name": tournament_regex})
+		teams = [t for t in teams if t != ""]
+		for t in teams:
+			print("  - %s" % t)
+
+	if args.individual_games:
+		print("\n*** Individual Results ***\n")
+		docs = wq.collection.find(tournament_filter, {"name": 1})
+		for d in docs:
+			job_name = d["name"]
+			game_report = game_report_collection.find_one({"job_name": job_name})
+			if game_report is not None:
+				print("%6s %20s vs. %-20s ended %3d:%3d" \
+				      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
+				         game_report["teams"][0], game_report["teams"][1],
+				         game_report["total-points"][0], game_report["total-points"][1]))
+
+	# MapReduce version from webview-refbox
+	# team_reports = game_report_collection.inline_map_reduce( # map function
+	# 	"function () {\n"
+	# 	"  if (this.teams[0] != \"\") {\n"
+	# 	"	   value = {teams: [this.teams[0]]}\n"
+	# 	"	   value[this.teams[0]] = {points: this[\"total-points\"][0],\n"
+	# 	"	 		           opp_points: this[\"total-points\"][1]}\n"
+	# 	"    emit(\"stats\", value);\n"
+	# 	"	 }\n"
+	# 	"  if (this.teams[1] != \"\") {\n"
+	# 	"	   value = {teams: [this.teams[1]]}\n"
+	# 	"	   value[this.teams[1]] = {points: this[\"total-points\"][1],\n"
+	# 	"	                           opp_points: this[\"total-points\"][0]}\n"
+	# 	"    emit(\"stats\", value);\n"
+	# 	"	 }\n"
+	# 	"}\n",
+		
+	# 	# reduce function
+	# 	"function(key, values) {\n"
+	# 	"  rv = { teams: [] };\n"
+	# 	"  for (var i = 0; i < values.length; ++i) {\n"
+	# 	"	   for (var t = 0; t < values[i].teams.length; ++t) {\n"
+	# 	"	     if (rv.teams.indexOf(values[i].teams[t]) == -1) {\n"
+	# 	"	       rv.teams.push(values[i].teams[t])\n"
+	# 	"	     }\n"
+	# 	"	     if (! (values[i].teams[t] in rv)) {\n"
+	# 	"	       rv[values[i].teams[t]] = { games: 0, wins: 0, points: 0, opp_points: 0 };\n"
+	# 	"	     }\n"
+	# 	"	     rv[values[i].teams[t]].games +=\n"
+	# 	"	       (\"games\" in values[i][values[i].teams[t]]) ? values[i][values[i].teams[t]].games : 1;\n"
+	# 	"	     if (\"wins\" in values[i][values[i].teams[t]]) {\n"
+	# 	"	       rv[values[i].teams[t]].wins += values[i][values[i].teams[t]].wins;\n"
+	# 	"	     } else if (values[i][values[i].teams[t]].points > values[i][values[i].teams[t]].opp_points) {\n"
+	# 	"	       rv[values[i].teams[t]].wins += 1;\n"
+	# 	"	     }\n"
+	# 	"	     rv[values[i].teams[t]].points += values[i][values[i].teams[t]].points;\n"
+	# 	"	     rv[values[i].teams[t]].opp_points += values[i][values[i].teams[t]].opp_points;\n"
+	# 	"	    }\n"
+	# 	"	 }\n"
+	# 	"	 return rv;\n"
+	# 	"}\n",
+	# 	query={"job_name": tournament_regex})
+	# for t in team_reports:
+	# 	pprint(t)
+
+	# Aggregation pipeline version
+	cursor = game_report_collection.aggregate(\
+	     # Extract reports concerning the given tournament
+		[{"$match":
+		  {"job_name": tournament_regex,
+		   "teams.0": { "$ne": "" },
+		   "teams.1": { "$ne": "" }}},
+		 # Project document to contain only relevant information
+		 {"$project":
+		  { "job_name": "$job_name",
+		    "team_cyan": { "$arrayElemAt": ["$teams", 0]},
+		    "team_magenta": { "$arrayElemAt": ["$teams", 1]},
+		    "points_cyan": { "$arrayElemAt": ["$total-points", 0]},
+		    "points_magenta": { "$arrayElemAt": ["$total-points", 1]}}
+		 },
+		 # Add win/defeat/draw indicators per team		 
+		 {"$project":
+		  {"job_name": "$job_name",
+		   "doc": { "$cond": { "if": { "$gt": [ "$points_cyan", "$points_magenta" ]},
+		                       "then": [{"job_name": "$job_name", "team": "$team_cyan",
+		                                 "win": 1, "defeat": 0, "draw": 0,
+		                                 "points": "$points_cyan", "points_against": "$points_magenta"},
+		                                {"job_name": "$job_name", "team": "$team_magenta",
+		                                 "win": 0,  "defeat": 1, "draw": 0,
+		                                 "points": "$points_magenta", "points_against": "$points_cyan"}],
+		                       "else": {"$cond": { "if": { "$gt": [ "$points_magenta", "$points_cyan" ]},
+		                                           "then": [{"job_name": "$job_name",
+		                                                     "team": "$team_cyan",
+		                                                     "win": 0, "defeat": 1, "draw": 0,
+		                                                     "points": "$points_cyan",
+		                                                     "points_against": "$points_magenta"},
+		                                                    {"job_name": "$job_name",
+		                                                     "team": "$team_magenta",
+		                                                     "win": 1, "defeat": 0, "draw": 0,
+		                                                     "points": "$points_magenta",
+		                                                     "points_against": "$points_cyan"}],
+		                                           "else": [{"job_name": "$job_name",
+		                                                     "team": "$team_cyan",
+		                                                     "win": 0, "defeat": 0, "draw": 1,
+		                                                     "points": "$points_cyan",
+		                                                     "points_against": "$points_magenta"},
+		                                                    {"job_name": "$job_name",
+		                                                     "team": "$team_magenta",
+		                                                     "win": 0, "defeat": 0, "draw": 1,
+		                                                     "points": "$points_magenta",
+		                                                     "points_against": "$points_cyan"}]}}}}}},
+		 # Unwind created array again into multiple documents
+		 {"$unwind": "$doc"},
+		 # Group by team summing wins, defeats, draws, points
+		 {"$group":
+		  {"_id": "$doc.team",
+		   "wins": { "$sum": "$doc.win" },
+		   "defeats": { "$sum": "$doc.defeat" },
+		   "draws": { "$sum": "$doc.draw" },
+		   "points": { "$sum": "$doc.points" },
+		   "points_against": { "$sum": "$doc.points_against" }}},
+
+		 # Pipeline branches here
+		 {"$facet":
+		   # Keep per team stats by just sorting them by team name
+		  {"points_wins_per_team": [{"$sort": { "_id": 1 }}],
+
+		   # Extract the best team(s) of the tournament
+		   "tournament_best": [
+			   {"$group":
+			    # Calculate max number of wins, push all teams into an array
+			    {"_id": 0,
+			     "max_wins": { "$max": "$wins" },
+			     "teams": { "$push": { "team": "$_id", "wins": "$wins"}}}},
+			   # Filter by teams with the maximum number of wins
+			   {"$project":
+			    {"_id": 0,
+			     "best": { "$filter":
+			               { "input": "$teams",
+			                 "as": "team",
+			                 "cond": { "$eq": ["$max_wins", "$$team.wins"]}}}}},
+			   # unwind resulting filtered array into one document per team
+			   {"$unwind": "$best"}
+		   ]}}
+		 ])
+
+	d = cursor.next()
+	if d is None:
+		print("ERROR: No aggregation result")
+		exit(-2);
+
+	print("\n*** Results per Team ***\n")
+	for doc in d["points_wins_per_team"]:
+		print("%-16s  wins: %d  defeats: %d  draws: %d  points: %d  points against: %d" \
+		      % (doc["_id"], doc["wins"], doc["defeats"], doc["draws"], doc["points"], doc["points_against"]))
+	
+	#for t in teams:
+	#print("Min/Avg/Max per Team")
+
+	print("\n*** Overall Best Performing Team ***\n")
+	for doc in d["tournament_best"]:
+		print("%s with %d wins" % (doc["best"]["team"], doc["best"]["wins"]))
+
+	print("\n")
+
+	
