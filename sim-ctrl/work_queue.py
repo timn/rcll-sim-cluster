@@ -76,8 +76,10 @@ class WorkQueue(object):
 		#print("Item: %s" % item)
 		return item
 
-	def get_next_item(self, recently_failed_deadline=None):
+	def get_next_item(self, recently_failed_deadline=None, name_regex=None):
 		filter = {"status.state": "pending"}
+		if name_regex is not None:
+			filter["name"] = { "$regex": name_regex }
 		if recently_failed_deadline is not None:
 			filter["$or"] = [ {"status.failed": { "$exists": False} },
 			                  {"status.failed": { "$size": 0} },
@@ -113,8 +115,10 @@ class WorkQueue(object):
 	def total_num_jobs(self):
 		return self.collection.count()
 
-	def num_pending_jobs(self, recently_failed_deadline=None):
+	def num_pending_jobs(self, recently_failed_deadline=None, name_regex=None):
 		all_pending_filter = {"status.state": "pending"}
+		if name_regex is not None:
+			all_pending_filter["name"] = { "$regex": name_regex }
 		all_pending = self.collection.count(all_pending_filter)
 
 		without_recently_failed = all_pending
@@ -125,6 +129,8 @@ class WorkQueue(object):
 				         {"status.failed": { "$size": 0} },
 				         {"status.failed": { "$all": [ {"$elemMatch": { "$lte": recently_failed_deadline}}]}}]
 			}
+			if name_regex is not None:
+				no_recently_failed_filter["name"] = { "$regex": name_regex }
 			without_recently_failed = self.collection.count(no_recently_failed_filter)
 
 		return (all_pending, without_recently_failed)
