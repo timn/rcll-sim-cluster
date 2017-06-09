@@ -2,6 +2,7 @@
 
 from work_queue import WorkQueue
 from config import Configuration
+from job_generator import JobGenerator
 
 import argparse
 from datetime import datetime, timedelta
@@ -9,8 +10,8 @@ from pprint import pprint
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Print job info')
-	parser.add_argument('--open', action='store_true',
-	                    help='Show open jobs.')
+	parser.add_argument('--tournament',
+	                    help='Consider only jobs for given tournament.')
 	parser.add_argument('job_names', metavar="JOB-NAME", nargs='*',
 	                    help='Name of job to retrieve info for.')
 	args = parser.parse_args()
@@ -33,10 +34,14 @@ if __name__ == '__main__':
 				print("*** Job %s ***" % job_name)
 				pprint(item)
 
-	if args.open:
-		recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
-		(all_pending, without_recently_failed) = wq.num_pending_jobs(recently_failed_deadline)
+	tournament_regex = None
+	if args.tournament:
+		tournament_regex = JobGenerator.id_regex(args.tournament)
+
+	recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
+	(all_pending, without_recently_failed) = wq.num_pending_jobs(recently_failed_deadline,
+	                                                             name_regex=tournament_regex)
 		
-		print("Open jobs: %d (additional recently failed: %d)" \
-		      % (without_recently_failed, (all_pending-without_recently_failed)))
+	print("Open jobs: %d (additional recently failed: %d)" \
+	      % (without_recently_failed, (all_pending-without_recently_failed)))
 
