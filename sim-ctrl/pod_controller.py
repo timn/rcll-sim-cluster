@@ -200,6 +200,7 @@ class PodController(object):
 
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
+		start_time = datetime.now()
 		print("Deleting items")
 		for uid in self.pods:
 			print("  - Pod %s:%s" % uid)
@@ -300,6 +301,9 @@ class PodController(object):
 					del self.services[uid]
 					if not self.services: w.stop()
 		#print("Done deleting services")
+
+		all_deleted_time = datetime.now()
+		print("All items deleted (deletion took %s)" % str(all_deleted_time-start_time))
 
 	def monitor_pods(self):
 		# Wrap watch in outer loop, it might get interrupted before we
