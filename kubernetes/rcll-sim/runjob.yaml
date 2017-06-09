@@ -26,6 +26,10 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
 
+        # Set the following to play only games of a specific tournament
+        #- name: TOURNAMENT
+        #  value: TestTournament
+
         # This is the namespace in which the per-job pods run, i.e., the
         # pods that make up the simulation. Setting it to auto (required
         # if spec.parallelism > 1) will cause the creation of new per-job-pod
