@@ -15,12 +15,17 @@ if __name__ == '__main__':
 	                    help='Template file for job parameters.')
 	parser.add_argument('--debug', dest='debug', action='store_true',
 	                    help='Template file for job parameters.')
+	parser.add_argument('--dry-run', action='store_true',
+	                    help='Only run generation, but do not store in work queue.')
 	parser.add_argument('tournament_name', metavar="T-NAME",
 	                    help='Tournament name (prefix for job names)')
 	args = parser.parse_args()
 
+	if args.dry_run:
+		print("\n*** ATTENTION: This is a dry run, no jobs actually stored ***\n")
+
 	try:
-		jobgen = JobGenerator(args.template, args.debug)
+		jobgen = JobGenerator(args.template, args.debug, dry_run=args.dry_run)
 		(jobname, idnum, params) = \
 		    jobgen.generate_and_store(args.tournament_name, args.team_cyan, args.team_magenta)
 		print("\nGenerated %s" % jobname)
