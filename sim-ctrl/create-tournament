@@ -35,8 +35,12 @@ class TournamentGenerator(object):
 		print("Total number of games: %d" % num_games)
 
 		if time_per_game > 0:
-			total_estimate = datetime.timedelta(minutes=(num_games * time_per_game))
-			print("Total estimated time: %s (%d minutes per game)" % (total_estimate, time_per_game))
+			num_rounds = num_games // num_concurrent_games
+			if num_games % num_concurrent_games > 0:
+				num_rounds += 1
+			total_estimate = datetime.timedelta(minutes=(num_rounds * time_per_game))
+			print("Total estimated time: %s (%d minutes per game, %d concurrent games, therefore %d rounds)" \
+			      % (total_estimate, time_per_game, num_concurrent_games, num_rounds))
 
 		#jobgen.generate_and_store(args.tournament_name, args.team_cyan, args.team_magenta)
 
