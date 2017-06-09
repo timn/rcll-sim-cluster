@@ -8,6 +8,7 @@ from kubernetes.client.api_client import ApiClient
 import jinja2
 import yaml
 import json
+from datetime import datetime, timedelta
 
 class PodController(object):
 	def __init__(self, config):
@@ -304,6 +305,7 @@ class PodController(object):
 		# Wrap watch in outer loop, it might get interrupted before we
 		# are finished looking
 		printed_all_up=False
+		start_time = datetime.now()
 		while self.pods:
 			w = Watch()
 			for event in w.stream(self.core_api.list_pod_for_all_namespaces):
@@ -423,6 +425,7 @@ class PodController(object):
 							all_up = False
 					if all_up:
 						printed_all_up = True
-						print("All pods up and running")
+						all_up_time = datetime.now()
+						print("All pods up and running (setup took %s)" % str(all_up_time-start_time))
 
 		return True
