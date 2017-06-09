@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: run-sim-jobs
+spec:
+  parallelism: 4
+  template:
+    metadata:
+      name: run-sim-jobs
+    spec:
+      containers:
+      - name: run-sim-jobs
+        image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim-ctrl:latest
+        #imagePullPolicy: Always
+        command: ["stdbuf", "-oL", "-eL", "/opt/rcll-sim-ctrl/run-sim-jobs"]
+        env:
+        # This gives the job pods access to their name. This is required
+        # so that they can determine the job name and other associated pods
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        # This is the namespace in which the job and the job pods run
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+
+        # This is the namespace in which the per-job pods run, i.e., the
+        # pods that make up the simulation. Setting it to auto (required
+        # if spec.parallelism > 1) will cause the creation of new per-job-pod
+        # namespaces according to the namespace prefix with a nunning numer.
+        # The number will be the index of a job pod's name in the list of all
+        # job pod names.
+        - name: JOB_NAMESPACE
+          value: auto
+        - name: JOB_NAMESPACE_PREFIX
+          value: rcll-sim-
+        - name: JOB_NAMESPACE_COPY_SECRETS
+          value: ceph-client-key
+        # Database holding the work queue
+        - name: MONGODB_RS
+          value: rs0
+        - name: MONGODB_RS_SRV
+          value: _mongodb._tcp.mongodb.database
+
+        # Setting this to true causes the runner script to re-try
+        # jobs that have recently (within the last 15 minutes) failed.
+        # This can cause busy loops if there is an early error.
+        - name: RUN_ALSO_RECENTLY_FAILED
+          value: "true"
+
+        # Combined with stdbuf in command causes timely log messages
+        - name: PYTHONUNBUFFERED
+          value: "true"
+
+      imagePullSecrets:
+        - name: regsecret
+      restartPolicy: Never
