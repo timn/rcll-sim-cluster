@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: run-sim-jobs
-        image: defiant.kbsg.rwth-aachen.de:5000/timn/rcll-sim-ctrl:latest
+        image: registry.kbsg.rwth-aachen.de/timn/rcll-sim-ctrl:latest
         #imagePullPolicy: Always
         command: ["stdbuf", "-oL", "-eL", "/opt/rcll-sim-ctrl/run-sim-jobs"]
         env:
