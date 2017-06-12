@@ -134,3 +134,45 @@ class WorkQueue(object):
 			without_recently_failed = self.collection.count(no_recently_failed_filter)
 
 		return (all_pending, without_recently_failed)
+
+	def job_stats(self, recently_failed_deadline, name_regex=None):
+		filter = {}
+		if name_regex is not None:
+			filter["name"] = { "$regex": name_regex }
+
+		cursor = self.collection.aggregate(\
+		    [{"$match": filter},
+		     {"$facet": {
+			     "pending": [{"$match": { "status.state": "pending" }},
+			                 {"$count": "jobs"}],
+			     "running": [{"$match": { "status.state": "running" }},
+			                 {"$count": "jobs"}],
+			     "completed": [{"$match": { "status.state": "completed" }},
+			                   {"$count": "jobs"}],
+			     "failed": [{"$match": { "status.state": "pending",
+			                             "$and": [ {"status.failed": { "$exists": True} },
+			                                       {"status.failed": { "$gt": [ "$size", 0] }} ]}}],
+			     "recently_failed": [{"$match": { "status.state": "pending",
+			                                      "$and": [ {"status.failed": { "$exists": True} },
+			                                                {"status.failed": { "$gt": ["$size", 0] }},
+			                                                {"status.failed": { "$all": [
+				                                                {"$elemMatch": {
+					                                                "$gt": recently_failed_deadline}}]}}]}}],
+		     }},
+		     {"$project": {
+			     "pending": {"$arrayElemAt": ["$pending.jobs", 0]},
+			     "running": {"$arrayElemAt": ["$running.jobs", 0]},
+			     "completed": {"$arrayElemAt": ["$completed.jobs", 0]},
+			     "failed": {"$arrayElemAt": ["$failed.jobs", 0]},
+			     "recently_failed": {"$arrayElemAt": ["$recently_failed.jobs", 0]}}
+		     }])
+
+		d = cursor.next()
+		if d is not None:
+			return { "pending": d["pending"] if "pending" in d else 0,
+			         "running": d["running"] if "running" in d else 0,
+			         "completed": d["completed"] if "completed" in d else 0,
+			         "failed": d["failed"] if "failed" in d else 0,
+			         "recently_failed": d["recently_failed"] if "recently_failed" in d else 0}
+		else:
+			return None
