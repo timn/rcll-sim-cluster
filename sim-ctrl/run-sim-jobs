@@ -14,11 +14,12 @@ from traceback import print_exc
 from kubernetes.client import V1DeleteOptions
 
 class SimController(object):
-	def __init__(self, include_recently_failed=False, job_namespace=None, tournament=None):
+	def __init__(self, include_recently_failed=False, job_namespace=None, tournament=None, run_at_most=0):
 		self.config	= Configuration()
 		self.include_recently_failed = include_recently_failed
 		self.namespace = self.config.kube_namespace
 		self.job_namespace = job_namespace or self.config.kube_namespace
+		self.run_at_most = run_at_most
 		if self.job_namespace == "auto":
 			name_prefix = "rcll-sim-"
 			if "JOB_NAMESPACE_PREFIX" in os.environ:
@@ -133,6 +134,7 @@ class SimController(object):
 		if self.tournament_regex is not None:
 			print("Filtering job names by '%s'" % self.tournament_regex)
 		job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
+		jobs_run = 0
 		while job is not None:
 			# We do +1 here to include the one we are currently handling
 			(all_pending, without_recently_failed) = \
@@ -186,8 +188,14 @@ class SimController(object):
 
 			if not self.include_recently_failed:
 				recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
-			job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
-		print("No more open jobs")
+
+			jobs_run += 1
+			if self.run_at_most == 0 or jobs_run < self.run_at_most:
+				job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
+			else:
+				job = None
+
+		print("Done running jobs")
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Run RCLL Cluster Sim Jobs')
@@ -197,6 +205,8 @@ if __name__ == '__main__':
 	                    help='Namespace for created pods.')
 	parser.add_argument('--tournament',
 	                    help='Run only jobs for specified tournament.')
+	parser.add_argument('--run-at-most', type=int, metavar="N",
+	                    help='Run no more than N jobs')
 	args = parser.parse_args()
 
 	job_namespace = "default"
@@ -211,11 +221,17 @@ if __name__ == '__main__':
 	if args.tournament:
 		tournament = args.tournament
 
+	run_at_most = 0
+	if "RUN_AT_MOST" in os.environ:
+		run_at_most = os.environ["RUN_AT_MOST"]
+	if args.run_at_most:
+		run_at_most = args.run_at_most
+
 	include_recently_failed = False
 	if "RUN_ALSO_RECENTLY_FAILED" in os.environ and os.environ["RUN_ALSO_RECENTLY_FAILED"].lower == "true":
 		include_recently_failed = True
 	if args.include_recently_failed:
 		include_recently_failed = True
 
-	with SimController(include_recently_failed, job_namespace, tournament=tournament) as sim_ctrl:
+	with SimController(include_recently_failed, job_namespace, tournament=tournament, run_at_most=run_at_most) as sim_ctrl:
 		sim_ctrl.run()
