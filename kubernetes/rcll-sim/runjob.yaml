@@ -45,7 +45,7 @@ spec:
         - name: JOB_NAMESPACE_PREFIX
           value: rcll-sim-
         - name: JOB_NAMESPACE_COPY_SECRETS
-          value: ceph-client-key
+          value: ceph-client-key regsecret
         # Database holding the work queue
         - name: MONGODB_RS
           value: rs0
