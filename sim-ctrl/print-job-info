@@ -39,9 +39,16 @@ if __name__ == '__main__':
 		tournament_regex = JobGenerator.id_regex(args.tournament)
 
 	recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
-	(all_pending, without_recently_failed) = wq.num_pending_jobs(recently_failed_deadline,
-	                                                             name_regex=tournament_regex)
-		
-	print("Open jobs: %d (additional recently failed: %d)" \
-	      % (without_recently_failed, (all_pending-without_recently_failed)))
+
+	other = wq.num_pending_jobs(recently_failed_deadline, name_regex=tournament_regex)
+	print("Other: %s" % str(other))
+
+	jobstat = wq.job_stats(recently_failed_deadline, name_regex=tournament_regex)
+
+	if args.tournament:
+		print("Job Stats for '%s'" % args.tournament)
+	else:
+		print("Job Stats for all tournaments")
+	for key, value in jobstat.items():
+		print("  - %-16s: %2d" % (key, value))
 
