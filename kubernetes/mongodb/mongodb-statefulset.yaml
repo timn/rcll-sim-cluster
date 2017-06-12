@@ -42,6 +42,9 @@ spec:
       labels:
         database: mongodb
         replica-set: rs0
+      annotations:
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
+
     spec:
       terminationGracePeriodSeconds: 10
       containers:
