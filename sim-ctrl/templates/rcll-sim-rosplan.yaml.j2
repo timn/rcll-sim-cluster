@@ -2,12 +2,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: rcll-sim-rosplan
+  name: rcll-sim-rosplan-{{ team.color|lower }}
   namespace: {{ namespace }}
 spec:
   selector:
     app: rosplan
     robot: central
+    team-color: {{ team.color|lower }}
   clusterIP: None
   ports:
   - port: 1
@@ -15,11 +16,12 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: rcll-sim-rosplan
+  name: rcll-sim-rosplan-{{ team.color|lower }}
   namespace: {{ namespace }}
   labels:
     app: rosplan
     robot: central
+    team-color: {{ team.color|lower }}
   annotations:
     scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:

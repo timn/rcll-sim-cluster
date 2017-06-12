@@ -23,6 +23,9 @@
     ros:
       service_name: rosmaster-{{ robot_suffix }}
       port: 11311
+    team:
+      name: {{ team_name }}
+      color: {{ team_color }}
 {% else -%}
 # No robot pods for team {{ team_name }} ({{ team_color }})
 {% endfor -%}
