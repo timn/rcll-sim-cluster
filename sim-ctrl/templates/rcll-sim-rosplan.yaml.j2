@@ -30,7 +30,8 @@ spec:
     image: {{ rcll_sim_rosplan_image }}
     command: ["/opt/ros/run-env"]
     args: ["roslaunch", "--wait", "--screen", "--skip-log-check", "--disable-title",
-           "rcll_ros", "rosplan_production.launch"]
+           {{ roslaunch_package|default("rcll_ros") }},
+           {{ roslaunch_file|default("rosplan_production.launch") }}]
     env:
     - name: ROS_MASTER_URI
       value: {{ ros_master_uri }}
