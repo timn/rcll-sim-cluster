@@ -1,0 +1,79 @@
+# Headless service for Fawkes planner pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: fawkes-planner-{{ team.color|lower }}
+  namespace: {{ namespace }}
+spec:
+  selector:
+    app: fawkes-planner
+    robot: central
+    team-color: {{ team.color|lower }}
+  clusterIP: None
+  ports:
+  - port: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fawkes-planner-{{ team.color|lower }}
+  namespace: {{ namespace }}
+  labels:
+    app: fawkes-planner
+    robot: central
+    team-color: {{ team.color|lower }}
+  annotations:
+    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
+    pod.beta.kubernetes.io/init-containers: '[
+        {
+          "name": "wait-for-rcll-sim",
+          "image": "{{ rcll_sim_image }}",
+          "command": ["/opt/rcll-sim/wait-services"],
+          "args": ["gazebo", "refbox"],
+          "env": [
+            {
+              "name": "MAX_TRIES",
+              "value": "60"
+            }
+          ]
+        }
+      ]'
+spec:
+  containers:
+  - name: fawkes
+    image: {{ fawkes_planner_image }}
+    imagePullPolicy: Always
+    command: ["/opt/rcll-sim/run-component"]
+    args: ["fawkes"]
+    env:
+    - name: CONFIG
+      value: {{ fawkes.config }}
+    - name: META_PLUGIN
+      value: {{ fawkes.plugins }}
+    - name: LOG_LEVEL
+      value: debug
+    - name: ROS_MASTER_URI
+      value: {{ ros_master_uri }}
+
+    - name: TEAM_NAME
+      value: {{ team.name }}
+    - name: TEAM_COLOR
+      value: {{ team.color }}
+
+    resources:
+      requests:
+        memory: "8Gi"
+        cpu: "2"
+      limits:
+        memory: "8Gi"
+        cpu: "2"
+
+    readinessProbe:
+      tcpSocket:
+        port: {{ fawkes.port }}
+      initialDelaySeconds: {{ fawkes.readiness_initial_delay|default("10") }}
+      failureThreshold: {{ fawkes.readiness_failure_threshold|default("12") }}
+
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never

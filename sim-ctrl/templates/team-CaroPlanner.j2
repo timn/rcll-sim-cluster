@@ -1,0 +1,25 @@
+{% set num_robots =      3 %}
+{% set robot_pod_image = "carologistics/fawkes-robotino:latest" %}
+{% set crypto_key =      "randomkey" %}
+
+{% set robot_pod_fawkes_plugins = "gazsim-meta-agent" %}
+
+{% macro pods(team_name, team_color) %}
+- template: fawkes-planner
+  vars:
+    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic
+    fawkes_planner_image: {{ docker_registry }}carologistics/fawkes-robotino:latest
+    robots:
+{%- for i in range(1, num_robots+1) %}
+      - {{team_color[0]|upper }}-R{{ i }}
+{%- endfor %}
+    ros_master_uri: http://rosmaster-{{ team_color|lower }}:11311
+    team:
+      name: {{ team_name }}
+      color: {{ team_color }}
+    fawkes:
+      config: gazsim-configurations/default/planner.yaml
+      port: 1930
+      plugins: m-planner
+
+{% endmacro %}
