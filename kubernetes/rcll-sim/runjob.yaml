@@ -7,6 +7,10 @@ spec:
   template:
     metadata:
       name: run-sim-jobs
+
+      annotations:
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
+
     spec:
       containers:
       - name: run-sim-jobs
