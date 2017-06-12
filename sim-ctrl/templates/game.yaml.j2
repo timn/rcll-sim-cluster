@@ -9,7 +9,7 @@
 {% endfor -%}
 {% endmacro -%}
 
-{% set docker_registry = "defiant.kbsg.rwth-aachen.de:5000/" -%}
+{% set docker_registry = "registry.kbsg.rwth-aachen.de/" -%}
 
 {# Import team-specific configurations #}
 {% import "team-" + team_name_cyan + ".j2" as team_cyan with context -%}
