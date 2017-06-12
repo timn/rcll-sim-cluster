@@ -83,7 +83,7 @@ class WorkQueue(object):
 		if recently_failed_deadline is not None:
 			filter["$or"] = [ {"status.failed": { "$exists": False} },
 			                  {"status.failed": { "$size": 0} },
-			                  {"status.failed": { "$all": [ {"$elemMatch": { "$lte": recently_failed_deadline}}]}}]
+			                  {"status.failed": { "$elemMatch": { "$lte": recently_failed_deadline}}}]
 		update = {"$set": {"status.state": "running",
 		                   "status.running": datetime.datetime.utcnow()}}
 		sort = [("status.created", pymongo.ASCENDING)]
@@ -127,7 +127,7 @@ class WorkQueue(object):
 				"status.state": "pending",
 				"$or": [ {"status.failed": { "$exists": False} },
 				         {"status.failed": { "$size": 0} },
-				         {"status.failed": { "$all": [ {"$elemMatch": { "$lte": recently_failed_deadline}}]}}]
+				         {"status.failed": { "$elemMatch": { "$lte": recently_failed_deadline}}}]
 			}
 			if name_regex is not None:
 				no_recently_failed_filter["name"] = { "$regex": name_regex }
