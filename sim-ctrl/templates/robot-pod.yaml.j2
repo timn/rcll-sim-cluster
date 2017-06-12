@@ -98,6 +98,11 @@ spec:
     - name: ROS_MASTER_URI
       value: http://localhost:{{ ros.port }}
 
+    - name: TEAM_NAME
+      value: {{ team.name }}
+    - name: TEAM_COLOR
+      value: {{ team.color }}
+
     resources:
       requests:
         memory: "1Gi"
