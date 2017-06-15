@@ -22,6 +22,7 @@ spec:
   selector:
     app: fawkes
     robot: {{ robot.name }}
+    team-color: {{ team.color|lower }}
   type: ClusterIP
   ports:
   - port: {{ fawkes.port }}
@@ -49,6 +50,7 @@ metadata:
   labels:
     robot: {{ robot.name }}
     app: fawkes
+    team-color: {{ team.color|lower }}
   annotations:
     scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
     pod.beta.kubernetes.io/init-containers: '[
