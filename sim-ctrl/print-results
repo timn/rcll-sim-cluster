@@ -41,15 +41,24 @@ if __name__ == '__main__':
 
 	if args.individual_games:
 		print("\n*** Individual Results ***\n")
-		docs = wq.collection.find(tournament_filter, {"name": 1})
+		docs = wq.collection.find(tournament_filter)
 		for d in docs:
 			job_name = d["name"]
 			game_report = game_report_collection.find_one({"job_name": job_name})
+			score="No score"
 			if game_report is not None:
-				print("%6s %20s vs. %-20s ended %3d:%3d" \
-				      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
-				         game_report["teams"][0], game_report["teams"][1],
-				         game_report["total-points"][0], game_report["total-points"][1]))
+				score = "%3d:%3d" \
+				      % (game_report["total-points"][0], game_report["total-points"][1])
+
+			state = d["status"]["state"]
+			if "failed" in d["status"] and len(d["status"]["failed"]) > 0:
+				state += ", failed %d times" % len(d["status"]["failed"])
+
+			print("%6s %16s vs. %-16s: %-10s (%s)" \
+			      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
+			         d["params"]["parameter_vars"]["team_name_cyan"],
+			         d["params"]["parameter_vars"]["team_name_magenta"],
+			         score, state))
 
 	# MapReduce version from webview-refbox
 	# team_reports = game_report_collection.inline_map_reduce( # map function
