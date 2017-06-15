@@ -12,6 +12,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Print job info')
 	parser.add_argument('--tournament',
 	                    help='Consider only jobs for given tournament.')
+	parser.add_argument('--list-tournaments', action='store_true',
+	                    help='List tournaments in database.')
 	parser.add_argument('job_names', metavar="JOB-NAME", nargs='*',
 	                    help='Name of job to retrieve info for.')
 	args = parser.parse_args()
@@ -40,9 +42,6 @@ if __name__ == '__main__':
 
 	recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
 
-	other = wq.num_pending_jobs(recently_failed_deadline, name_regex=tournament_regex)
-	print("Other: %s" % str(other))
-
 	jobstat = wq.job_stats(recently_failed_deadline, name_regex=tournament_regex)
 
 	if args.tournament:
@@ -52,3 +51,13 @@ if __name__ == '__main__':
 	for key, value in jobstat.items():
 		print("  - %-16s: %2d" % (key, value))
 
+	if args.list_tournaments:
+		# Aggregation pipeline version
+		cursor = wq.collection.aggregate(\
+		    [{"$group": {"_id": "$params.parameter_vars.tournament_name"}},
+		     {"$sort": {"_id": 1}}])
+		print("\n\nTournaments:")
+		for d in cursor:
+			print("  - %s" % d["_id"])
+
+			
