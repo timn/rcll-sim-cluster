@@ -2,6 +2,8 @@
 {% set robot_pod_image = "carologistics/fawkes-robotino:latest" %}
 {% set crypto_key =      "randomkey" %}
 
+{# This MUST derive robot-pod.yaml.j2 #}
+{% set robot_pod_template = "robot-pod-CaroPlanner" %}
 {% set robot_pod_fawkes_plugins = "gazsim-meta-agent" %}
 
 {% macro pods(team_name, team_color) %}
