@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 from job_generator import JobGenerator
+from config import Configuration
 
 import argparse
 from traceback import print_exc
+import copy
+import jinja2
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Job')
@@ -17,6 +20,8 @@ if __name__ == '__main__':
 	                    help='Template file for job parameters.')
 	parser.add_argument('--dry-run', action='store_true',
 	                    help='Only run generation, but do not store in work queue.')
+	parser.add_argument('--expand-kube-templates', action='store_true',
+	                    help='Expand and print Kubernetes templates.')
 	parser.add_argument('tournament_name', metavar="T-NAME",
 	                    help='Tournament name (prefix for job names)')
 	args = parser.parse_args()
@@ -29,6 +34,26 @@ if __name__ == '__main__':
 		(jobname, idnum, params) = \
 		    jobgen.generate_and_store(args.tournament_name, args.team_cyan, args.team_magenta)
 		print("\nGenerated %s" % jobname)
+		if args.expand_kube_templates:
+			params = copy.deepcopy(params)
+			config	= Configuration()
+			jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(config.template_path),
+			                           autoescape=False, extensions=['jinja2.ext.with_'])
+			for i in params["template_parameters"]:
+				headline = "---  Template: %s  ---" % i["template"]
+				print('-' * len(headline))
+				print(headline)
+				print('-' * len(headline))
+				i["vars"]["namespace"] = "rcll-sim-dryrun"
+				i["vars"]["job_name"] = jobname
+				template = jinja.get_template(i["template"] + ".yaml.j2")
+				if template is None:
+					print("Failed to get template '%s'" % i["template"])
+					raise FileNotFoundError("Could not find template '%s'" % i["template"])
+				yamldoc = template.render(i["vars"])
+				print(yamldoc)
+				print('-' * len(headline))
+
 	except:
 		print("\nFailed to generate job")
 		print_exc()
