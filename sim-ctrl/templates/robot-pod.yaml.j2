@@ -51,6 +51,8 @@ metadata:
     robot: {{ robot.name }}
     app: fawkes
     team-color: {{ team.color|lower }}
+{%- block labels_extra -%}
+{%- endblock %}
   annotations:
     scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
     pod.beta.kubernetes.io/init-containers: '[
@@ -69,6 +71,7 @@ metadata:
       ]'
 spec:
   containers:
+{%- block container_roscore %}
   - name: roscore
     image: {{ rcll_sim_image }}
     command: ["/opt/rcll-sim/run-component"]
@@ -83,6 +86,8 @@ spec:
       limits:
         memory: "200Mi"
         cpu: "60m"
+{% endblock -%}
+{%- block container_fawkes %}
   - name: fawkes
     image: {{ robot_pod_image }}
     #imagePullPolicy: Always
@@ -118,7 +123,9 @@ spec:
         port: {{ fawkes.port }}
       initialDelaySeconds: {{ fawkes.readiness_initial_delay|default("10") }}
       failureThreshold: {{ fawkes.readiness_failure_threshold|default("12") }}
+{%- endblock %}
 
+{% block container_localize_robot %}
   - name: localize-robot
     image: {{ robot_pod_image }}
     command: ["/opt/rcll-sim/localize-robot"]
@@ -133,7 +140,18 @@ spec:
       initialDelaySeconds: {{ localize_readiness_initial_delay|default("10") }}
       periodSeconds: {{ localize_readiness_period|default("5") }}
       failureThreshold: {{ localize_readiness_failure_threshold|default("60") }}
+{%- endblock %}
+
+{% block container_extra -%}
+{%- endblock %}
+
+{% block volumes -%}
+{%- endblock %}
 
   imagePullSecrets:
     - name: regsecret
   restartPolicy: Never
+
+{% block pods -%}
+{# Custom pods to be instantiated per robot may be placed in this block #}
+{%- endblock %}
