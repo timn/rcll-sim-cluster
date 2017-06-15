@@ -1,0 +1,65 @@
+{% extends "robot-pod.yaml.j2" %}
+
+{% block pods %}
+---
+# Headless service for MongoDB planner pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ robot.pod_name|replace("robot-", "mongodb-") }}
+  namespace: {{ namespace }}
+spec:
+  selector:
+    robot: {{ robot.name }}
+    team-color: {{ team.color|lower }}
+    database: mongodb
+    replica-set: syncedrobmem
+  clusterIP: None
+  ports:
+  - port: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ robot.pod_name|replace("robot-", "mongodb-") }}
+  namespace: {{ namespace }}
+  labels:
+    robot: {{ robot.name }}
+    team-color: {{ team.color|lower }}
+    database: mongodb
+    replica-set: syncedrobmem
+  annotations:
+    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
+spec:
+  containers:
+  - name: mongodb-sync
+    image: mongo
+    command:
+      - mongod
+      - "--replSet"
+      - syncedrobmem
+      - "--smallfiles"
+      - "--noprealloc"
+      - "--port"
+      - "27021"
+    ports:
+      - containerPort: 27021
+    volumeMounts:
+      - name: mongo-storage
+        mountPath: /data/db
+  - name: mongodb-sidecar
+    image: cvallance/mongo-k8s-sidecar
+    env:
+      - name: MONGO_SIDECAR_POD_LABELS
+        value: "database=mongodb,replica-set=syncedrobmem,team-color={{ team.color|lower }}"
+      - name: MONGO_PORT
+        value: "27021"
+
+  volumes:
+    - name: mongo-storage
+      emptyDir: {}
+
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never
+{% endblock %}
