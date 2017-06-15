@@ -382,7 +382,7 @@ class PodController(object):
 									else:
 										statis = "ExitCode:%d" % cs.state.terminated.exit_code
 
-						print(" - %-20s %-18s %d/%d  %s" \
+						print(" - %-24s %-18s %d/%d  %s" \
 						      % (object.metadata.name, status, ready, total, pod_name_ip))
 
 						self.pods[uid]["phase"] = object.status.phase
