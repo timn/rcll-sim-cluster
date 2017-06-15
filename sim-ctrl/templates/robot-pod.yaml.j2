@@ -90,7 +90,7 @@ spec:
 {%- block container_fawkes %}
   - name: fawkes
     image: {{ robot_pod_image }}
-    #imagePullPolicy: Always
+    imagePullPolicy: Always
     command: ["/opt/rcll-sim/run-component"]
     args: ["fawkes"]
     env:
