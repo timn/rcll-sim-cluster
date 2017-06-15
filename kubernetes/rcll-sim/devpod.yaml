@@ -18,6 +18,8 @@ spec:
         value: rs0
       - name: MONGODB_RS_SRV
         value: _mongodb._tcp.mongodb.database
+      - name: JOB_NAMESPACE_COPY_SECRETS
+        value: ceph-client-key regsecret
       volumeMounts:
       - name: ssh-authkeys
         mountPath: /root/.ssh
