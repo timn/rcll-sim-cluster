@@ -85,7 +85,7 @@ spec:
   containers:
     - name: gazebo
       image: {{ rcll_sim_image }}
-      #imagePullPolicy: Always
+      imagePullPolicy: Always
       command: ["/opt/rcll-sim/run-component"]
       args: ["gazebo"]
 {% if gazebo_world %}
@@ -117,6 +117,7 @@ spec:
 {%- endif %}
     - name: refbox
       image: {{ rcll_sim_image }}
+      imagePullPolicy: Always
       command: ["/opt/rcll-sim/run-component"]
       args: ["refbox"]
       env:
@@ -139,6 +140,7 @@ spec:
 
     - name: comm-proxy
       image: {{ rcll_sim_image }}
+      imagePullPolicy: Always
       command: ["/opt/rcll-sim/run-component"]
       args: ["fawkes"]
       env:
@@ -161,6 +163,7 @@ spec:
 
     - name: run-game
       image: {{ rcll_sim_image }}
+      imagePullPolicy: Always
       command: ["/opt/rcll-sim/run-component"]
       args: ["run-game"]
       env:

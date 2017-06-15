@@ -28,6 +28,7 @@ metadata:
         {
           "name": "wait-for-rcll-sim",
           "image": "{{ rcll_sim_image }}",
+          "imagePullPolicy": "Always",
           "command": ["/opt/rcll-sim/wait-services"],
           "args": ["gazebo", "refbox"],
           "env": [

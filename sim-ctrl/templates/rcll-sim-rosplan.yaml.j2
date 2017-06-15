@@ -28,6 +28,7 @@ spec:
   containers:
   - name: rosplan
     image: {{ rcll_sim_rosplan_image }}
+    imagePullPolicy: Always
     command: ["/opt/ros/run-env"]
     args: ["roslaunch", "--wait", "--screen", "--skip-log-check", "--disable-title",
            {{ roslaunch_package|default("rcll_ros") }},

@@ -67,7 +67,7 @@ spec:
   containers:
   - name: roscore
     image: {{ rcll_sim_ros_image }}
-    #imagePullPolicy: Always
+    imagePullPolicy: Always
     command: ["/opt/ros/run-env"]
     args: ["roscore"]
     env:
@@ -83,7 +83,7 @@ spec:
 
   - name: roslaunch-integration
     image: {{ rcll_sim_ros_image }}
-    #imagePullPolicy: Always
+    imagePullPolicy: Always
     command: ["/opt/ros/run-env"]
     args: ["roslaunch", "--wait", "--screen", "--skip-log-check", "--disable-title",
            "rcll_ros", "rcll_sim_integration.launch"]
@@ -145,7 +145,7 @@ spec:
 
   - name: roslaunch-navgraph-retriever
     image: {{ rcll_sim_ros_image }}
-    #imagePullPolicy: Always
+    imagePullPolicy: Always
     command: ["/opt/ros/run-env"]
     args: ["roslaunch", "--wait", "--screen", "--skip-log-check", "--disable-title",
            "rcll_fawkes_sim", "rcll_fawkes_sim_navgraph_retriever.launch"]

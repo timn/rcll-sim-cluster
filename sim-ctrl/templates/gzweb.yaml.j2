@@ -76,6 +76,7 @@ metadata:
         {
           "name": "wait-for-gazebo",
           "image": "{{ gzweb_image }}",
+          "imagePullPolicy": "Always",
           "command": ["/opt/gzweb/wait-services"],
           "args": ["gazebo"],
           "env": [
@@ -91,6 +92,7 @@ spec:
   containers:
     - name: gzweb
       image: {{ gzweb_image }}
+      imagePullPolicy: Always
       env:
       - name: GAZEBO_MASTER_URI
         value: http://gazebo:11345

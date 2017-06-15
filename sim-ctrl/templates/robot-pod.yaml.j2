@@ -59,6 +59,7 @@ metadata:
         {
           "name": "wait-for-rcll-sim",
           "image": "{{ rcll_sim_image }}",
+          "imagePullPolicy": "Always",
           "command": ["/opt/rcll-sim/wait-services"],
           "args": ["gazebo", "refbox"],
           "env": [
@@ -74,6 +75,7 @@ spec:
 {%- block container_roscore %}
   - name: roscore
     image: {{ rcll_sim_image }}
+    imagePullPolicy: Always
     command: ["/opt/rcll-sim/run-component"]
     args: ["roscore"]
     env:
@@ -128,6 +130,7 @@ spec:
 {% block container_localize_robot %}
   - name: localize-robot
     image: {{ robot_pod_image }}
+    imagePullPolicy: Always
     command: ["/opt/rcll-sim/localize-robot"]
     args: ["{{ robot.name }}"]
     env:
