@@ -44,7 +44,9 @@ if __name__ == '__main__':
 		docs = wq.collection.find(tournament_filter)
 		for d in docs:
 			job_name = d["name"]
-			game_report = game_report_collection.find_one({"job_name": job_name})
+			game_report = game_report_collection.find_one({"job_name": job_name,
+			                                               "teams.0": { "$ne": "" },
+			                                               "teams.1": { "$ne": "" }})
 			score="No score"
 			if game_report is not None:
 				score = "%3d:%3d" \
