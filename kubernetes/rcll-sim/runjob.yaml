@@ -15,7 +15,7 @@ spec:
       containers:
       - name: run-sim-jobs
         image: registry.kbsg.rwth-aachen.de/timn/rcll-sim-ctrl:latest
-        #imagePullPolicy: Always
+        imagePullPolicy: Always
         command: ["stdbuf", "-oL", "-eL", "/opt/rcll-sim-ctrl/run-sim-jobs"]
         env:
         # This gives the job pods access to their name. This is required
