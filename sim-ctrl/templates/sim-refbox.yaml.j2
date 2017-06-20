@@ -127,6 +127,8 @@ spec:
         value: "27017"
       - name: REFBOX_MONGODB_WAIT
         value: "{{ refbox.enable_mongodb|lower }}"
+      - name: REFBOX_MONGODB_WAIT_PERIOD
+        value: "4"
       volumeMounts:
         - name: refbox-config-volume
           mountPath: /opt/llsf-refbox/cfg/conf.d
