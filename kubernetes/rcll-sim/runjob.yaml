@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: run-sim-jobs
 spec:
-  parallelism: 4
+  parallelism: 2
   template:
     metadata:
       name: run-sim-jobs
@@ -62,6 +62,8 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "true"
 
+      terminationGracePeriodSeconds: 120
       imagePullSecrets:
         - name: regsecret
       restartPolicy: Never
+
