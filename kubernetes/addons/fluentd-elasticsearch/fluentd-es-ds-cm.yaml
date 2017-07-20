@@ -41,6 +41,8 @@ spec:
           readOnly: true
         - name: logdata
           mountPath: /logdata
+        - name: config
+          mountPath: /etc/td-agent
       nodeSelector:
         beta.kubernetes.io/fluentd-ds-ready: "true"
       terminationGracePeriodSeconds: 30
@@ -54,3 +56,9 @@ spec:
       - name: logdata
         hostPath:
           path: /mnt/data/logs
+      - name: config
+        configMap:
+          name: fluentd-config
+          items:
+          - key: td-agent.conf
+            path: td-agent.conf
