@@ -102,6 +102,14 @@ spec:
       ports:
         - containerPort: 8080
         - containerPort: 7681
+      resources:
+        requests:
+          memory: "400Mi"
+          cpu: "2"
+        limits:
+          memory: "400Mi"
+          cpu: "2"
+
   imagePullSecrets:
     - name: regsecret
   restartPolicy: Never
