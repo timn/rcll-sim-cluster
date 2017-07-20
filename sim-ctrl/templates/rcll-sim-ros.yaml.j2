@@ -76,10 +76,10 @@ spec:
     resources:
       requests:
         memory: "200Mi"
-        cpu: "30m"
+        cpu: "250m"
       limits:
         memory: "200Mi"
-        cpu: "60m"
+        cpu: "250m"
 
   - name: roslaunch-integration
     image: {{ rcll_sim_ros_image }}
@@ -134,10 +134,10 @@ spec:
     resources:
       requests:
         memory: "100Mi"
-        cpu: "20m"
+        cpu: "40m"
       limits:
         memory: "100Mi"
-        cpu: "40m"
+        cpu: "60m"
 
     volumeMounts:
     - name: shared-navgraph
@@ -158,7 +158,7 @@ spec:
     resources:
       requests:
         memory: "100Mi"
-        cpu: "10m"
+        cpu: "20m"
       limits:
         memory: "100Mi"
         cpu: "40m"

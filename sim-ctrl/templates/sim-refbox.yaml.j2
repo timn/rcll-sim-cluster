@@ -101,9 +101,9 @@ spec:
       resources:
         requests:
           memory: "1.5Gi"
-          cpu: "600m"
+          cpu: "1"
         limits:
-          memory: "2Gi"
+          memory: "1.5Gi"
           cpu: "1"
 {%- if refbox.enable_mongodb %}
     - name: mongodb-refbox
@@ -135,7 +135,7 @@ spec:
       resources:
         requests:
           memory: "200Mi"
-          cpu: "40m"
+          cpu: "400m"
         limits:
           memory: "400Mi"
           cpu: "400m"
@@ -158,9 +158,9 @@ spec:
       resources:
         requests:
           memory: "200Mi"
-          cpu: "30m"
+          cpu: "100m"
         limits:
-          memory: "300Mi"
+          memory: "200Mi"
           cpu: "100m"
 
     - name: run-game
