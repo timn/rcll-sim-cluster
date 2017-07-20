@@ -1,5 +1,5 @@
 {# Run gzweb only once -#}
-{% if namespace == gzweb_namespace or namespace == "default" -%}
+{% if gzweb_enable and (namespace == gzweb_namespace or namespace == "default") -%}
 apiVersion: v1
 kind: Service
 metadata:
