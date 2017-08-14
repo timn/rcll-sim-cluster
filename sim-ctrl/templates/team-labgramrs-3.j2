@@ -1,0 +1,21 @@
+{% set num_robots =      3 %}
+{% set robot_pod_image = "timn/fawkes-robotino:labgramrs3" %}
+{% set crypto_key =      "randomkey1" %}
+
+{% macro pods(team_name, team_color) %}
+{% set color_prefix = team_color[0] -%}
+- template: actorsim
+  vars:
+    actorsim_image: {{ docker_registry }}timn/actorsim:labgramrs3
+    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic
+    team:
+      name: {{ team_name }}
+      color: {{ team_color }}
+    robots:
+{%- for i in range(1, num_robots+1) %}
+      - {{ color_prefix|upper }}-R{{ i }}
+{%- endfor %}
+    actorsim:
+      group: labgramrs3
+
+{% endmacro %}
