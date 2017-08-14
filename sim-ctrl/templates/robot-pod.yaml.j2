@@ -93,8 +93,7 @@ spec:
   - name: fawkes
     image: {{ robot_pod_image }}
     imagePullPolicy: Always
-    command: ["/opt/rcll-sim/run-component"]
-    args: ["fawkes"]
+    command: ["/opt/fawkes-runenv/run-fawkes"]
     env:
     - name: CONFIG
       value: gazsim-configurations/default/robotino{{ fawkes.config_num }}.yaml
