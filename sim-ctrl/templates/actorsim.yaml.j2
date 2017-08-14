@@ -1,0 +1,77 @@
+# Headless service for Fawkes planner pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-{{ team.color[0]|lower }}1
+  namespace: {{ namespace }}
+spec:
+  selector:
+    app: actorsim
+    robot: central
+    team-color: {{ team.color|lower }}
+  clusterIP: None
+  ports:
+  - port: 1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: actorsim-{{ team.color|lower }}
+  namespace: {{ namespace }}
+  labels:
+    app: actorsim
+    robot: central
+    team-color: {{ team.color|lower }}
+  annotations:
+    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
+    pod.beta.kubernetes.io/init-containers: '[
+        {
+          "name": "wait-for-rcll-sim",
+          "image": "{{ rcll_sim_image }}",
+          "imagePullPolicy": "Always",
+          "command": ["/opt/rcll-sim/wait-services"],
+          "args": ["gazebo", "refbox"],
+          "env": [
+            {
+              "name": "MAX_TRIES",
+              "value": "60"
+            }
+          ]
+        }
+      ]'
+spec:
+  containers:
+  - name: actorsim
+    image: {{ actorsim_image }}
+    imagePullPolicy: Always
+    command: ["/opt/bin/run-actorsim"]
+    args: ["{{ actorsim.group }}"]
+    env:
+    - name: KUBERNETES_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    - name: TEAM_NAME
+      value: {{ team.name }}
+    - name: TEAM_COLOR
+      value: {{ team.color }}
+    - name: ROBOTS
+      value: "{{ robots|join(' ') }}"
+
+    resources:
+      requests:
+        memory: "8Gi"
+        cpu: "2"
+      limits:
+        memory: "8Gi"
+        cpu: "2"
+
+    #readinessProbe:
+    #  exec:
+    #    command: ["cat", "/tmp/actorsim-ok"]
+    #  initialDelaySeconds: {{ actorsim.readiness_initial_delay|default("10") }}
+    #  failureThreshold: {{ actorsim.readiness_failure_threshold|default("12") }}
+
+  imagePullSecrets:
+    - name: regsecret
+  restartPolicy: Never
