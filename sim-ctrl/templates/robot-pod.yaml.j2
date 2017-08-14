@@ -128,7 +128,7 @@ spec:
 
 {% block container_localize_robot %}
   - name: localize-robot
-    image: {{ robot_pod_image }}
+    image: {{ rcll_sim_image }}
     imagePullPolicy: Always
     command: ["/opt/rcll-sim/localize-robot"]
     args: ["{{ robot.name }}"]
