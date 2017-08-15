@@ -56,7 +56,7 @@ if __name__ == '__main__':
 			if "failed" in d["status"] and len(d["status"]["failed"]) > 0:
 				state += ", failed %d times" % len(d["status"]["failed"])
 
-			print("%6s %16s vs. %-16s: %-10s (%s)" \
+			print("%6s %16s vs. %-16s %-10s (%s)" \
 			      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
 			         d["params"]["parameter_vars"]["team_name_cyan"],
 			         d["params"]["parameter_vars"]["team_name_magenta"],
@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
 	print("\n*** Results per Team ***\n")
 	for doc in d["points_wins_per_team"]:
-		print("%-16s  wins: %d  defeats: %d  draws: %d  points: %d  points against: %d" \
+		print("%-16s  wins: %3d  defeats: %3d  draws: %3d  points: %5d  points against: %5d" \
 		      % (doc["_id"], doc["wins"], doc["defeats"], doc["draws"], doc["points"], doc["points_against"]))
 	
 	#for t in teams:
