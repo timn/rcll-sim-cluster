@@ -9,6 +9,7 @@ import jinja2
 import yaml
 import json
 from datetime import datetime, timedelta
+import traceback
 
 class PodController(object):
 	def __init__(self, config):
@@ -311,125 +312,132 @@ class PodController(object):
 		printed_all_up=False
 		start_time = datetime.now()
 		while self.pods:
-			w = Watch()
-			for event in w.stream(self.core_api.list_pod_for_all_namespaces):
-				object = event['object']
-				etype = event['type']
-				uid = (object.metadata.namespace, object.metadata.name)
-				if uid in self.pods:
-					if etype == "MODIFIED":
+			try:
+				w = Watch()
+				for event in w.stream(self.core_api.list_pod_for_all_namespaces):
+					object = event['object']
+					etype = event['type']
+					uid = (object.metadata.namespace, object.metadata.name)
+					if uid in self.pods:
+						if etype == "MODIFIED":
 
-						#print("************************************\n%s %s\n%s" \
-						#      % (etype, object.metadata.name, object))
+							#print("************************************\n%s %s\n%s" \
+							#      % (etype, object.metadata.name, object))
 
-						ready = 0
-						total = len(object.spec.containers)
-						pod_name_ip = "n/a"
-						status = object.status.phase
-						if object.status.reason is not None:
-							status = object.status.reason
-						if object.spec.node_name and object.spec.node_name != "":
-							pod_name_ip = object.spec.node_name
-						if object.status.pod_ip and object.status.pod_ip != "":
-							pod_name_ip += "/" + object.status.pod_ip
+							ready = 0
+							total = len(object.spec.containers)
+							pod_name_ip = "n/a"
+							status = object.status.phase
+							if object.status.reason is not None:
+								status = object.status.reason
+							if object.spec.node_name and object.spec.node_name != "":
+								pod_name_ip = object.spec.node_name
+							if object.status.pod_ip and object.status.pod_ip != "":
+								pod_name_ip += "/" + object.status.pod_ip
 
-						initializing = False
+							initializing = False
 
-						# On Kubernetes 1.5, get init container status out of the annotation manually
-						if not object.status.init_container_statuses \
-						   and object.metadata.annotations \
-						   and "pod.alpha.kubernetes.io/init-container-statuses" in object.metadata.annotations:
-							jp = json.loads(object.metadata.annotations["pod.alpha.kubernetes.io/init-containers"])
-							js = json.loads(object.metadata.annotations["pod.alpha.kubernetes.io/init-container-statuses"])
-							a = ApiClient()
-							object.spec.init_containers = \
-							    a._ApiClient__deserialize(jp, "list[V1Container]")
-							object.status.init_container_statuses = \
-							    a._ApiClient__deserialize(js, "list[V1ContainerStatus]")
+							# On Kubernetes 1.5, get init container status out of the annotation manually
+							if not object.status.init_container_statuses \
+							   and object.metadata.annotations \
+							   and "pod.alpha.kubernetes.io/init-container-statuses" in object.metadata.annotations:
+								jp = json.loads(object.metadata.annotations["pod.alpha.kubernetes.io/init-containers"])
+								js = json.loads(object.metadata.annotations["pod.alpha.kubernetes.io/init-container-statuses"])
+								a = ApiClient()
+								object.spec.init_containers = \
+									a._ApiClient__deserialize(jp, "list[V1Container]")
+								object.status.init_container_statuses = \
+									a._ApiClient__deserialize(js, "list[V1ContainerStatus]")
 
-						if object.status.init_container_statuses is not None:
-							for i, cs in enumerate(object.status.init_container_statuses):
-								if cs.state.terminated and cs.state.terminated.exit_code == 0:
-									continue
-								elif cs.state.terminated:
-									if len(cs.state.terminated.reason) == 0:
-										if cs.state.terminated.signal != 0:
-											status = "Init:Signal:%d" % cs.state.terminated.signal
+							if object.status.init_container_statuses is not None:
+								for i, cs in enumerate(object.status.init_container_statuses):
+									if cs.state.terminated and cs.state.terminated.exit_code == 0:
+										continue
+									elif cs.state.terminated:
+										if len(cs.state.terminated.reason) == 0:
+											if cs.state.terminated.signal != 0:
+												status = "Init:Signal:%d" % cs.state.terminated.signal
+											else:
+												status = "Init:ExitCode:%d" % cs.state.terminated.exit_code
 										else:
-											status = "Init:ExitCode:%d" % cs.state.terminated.exit_code
+											status = "Init:" + cs.state.terminated.reason
+										initializing = True
+									elif cs.state.waiting and len(cs.state.waiting.reason) > 0 \
+										 and cs.state.waiting.reason != "PodInitializing":
+										status = "Init:" + cs.state.waiting.reason
+										initializing = True
 									else:
-										status = "Init:" + cs.state.terminated.reason
-									initializing = True
-								elif cs.state.waiting and len(cs.state.waiting.reason) > 0 \
-								     and cs.state.waiting.reason != "PodInitializing":
-									status = "Init:" + cs.state.waiting.reason
-									initializing = True
-								else:
-									status = "Init:%d/%d" % (i, len(object.spec.init_containers))
-									initializing = True
-								break
+										status = "Init:%d/%d" % (i, len(object.spec.init_containers))
+										initializing = True
+									break
 
-						if not initializing and object.status.container_statuses is not None:
-							for cs in object.status.container_statuses:
-								if cs.ready: ready += 1
-								if cs.state.waiting and cs.state.waiting.reason != "":
-									status = cs.state.waiting.reason
-								elif cs.state.terminated and cs.state.terminated.reason != "":
-									status = cs.state.terminated.reason
-								elif cs.state.terminated and cs.state.terminated.reason == "":
-									if cs.state.terminated.signal != 0:
-										status = "Signal:%d" % cs.state.terminated.signal
-									else:
-										statis = "ExitCode:%d" % cs.state.terminated.exit_code
+							if not initializing and object.status.container_statuses is not None:
+								for cs in object.status.container_statuses:
+									if cs.ready: ready += 1
+									if cs.state.waiting and cs.state.waiting.reason != "":
+										status = cs.state.waiting.reason
+									elif cs.state.terminated and cs.state.terminated.reason != "":
+										status = cs.state.terminated.reason
+									elif cs.state.terminated and cs.state.terminated.reason == "":
+										if cs.state.terminated.signal != 0:
+											status = "Signal:%d" % cs.state.terminated.signal
+										else:
+											statis = "ExitCode:%d" % cs.state.terminated.exit_code
 
-						print(" - %-24s %-18s %d/%d  %s" \
-						      % (object.metadata.name, status, ready, total, pod_name_ip))
+							print(" - %-24s %-18s %d/%d  %s" \
+								  % (object.metadata.name, status, ready, total, pod_name_ip))
 
-						self.pods[uid]["phase"] = object.status.phase
-						self.pods[uid]["status"] = status
-						self.pods[uid]["ready"] = ready
-						self.pods[uid]["total"] = total
-						if ((object.status.phase == "Succeeded" or object.status.phase == "Failed")
-						    and object.metadata.deletion_timestamp == None):
+							self.pods[uid]["phase"] = object.status.phase
+							self.pods[uid]["status"] = status
+							self.pods[uid]["ready"] = ready
+							self.pods[uid]["total"] = total
+							if ((object.status.phase == "Succeeded" or object.status.phase == "Failed")
+								and object.metadata.deletion_timestamp == None):
 
-							if object.status.phase == "Failed":
-								return False
-
-							#print("Pod %s/%s is finished" % (object.metadata.namespace, object.metadata.name))
-							#self.delete_all()
-
-						if object.status.container_statuses is not None:
-							for c in filter(lambda c: c.state.terminated, object.status.container_statuses):
-
-								# If any container failed, assume overall failure
-								if c.state.terminated.exit_code != 0:
-									print("Container '%s' of pod '%s:%s' failed"
-									      % (c.name, uid[0], uid[1]))
+								if object.status.phase == "Failed":
 									return False
 
-								# If a sufficient container completed, assume overall completion
-								elif c.name in self.pods[uid]["sufficient_containers"]:
-									print("Container '%s' of pod '%s:%s' succeeded, finishing"
-									      % (c.name, uid[0], uid[1]))
-									return True
+								#print("Pod %s/%s is finished" % (object.metadata.namespace, object.metadata.name))
+								#self.delete_all()
 
-					if etype == "DELETED":
-						print("Pod %s/%s has been deleted" % (object.metadata.namespace, object.metadata.name))
-						del self.pods[uid]
-						if not self.pods:
-							w.stop()
-							print("Done watching events")
+							if object.status.container_statuses is not None:
+								for c in filter(lambda c: c.state.terminated, object.status.container_statuses):
 
-				if not printed_all_up:
-					all_up = True
-					for k, p in self.pods.items():
-						if p["status"] != "Running":
-							all_up = False
-						if p["ready"] != p["total"]:
-							all_up = False
-					if all_up:
-						printed_all_up = True
-						all_up_time = datetime.now()
-						print("All pods up and running (setup took %s)" % str(all_up_time-start_time))
+									# If any container failed, assume overall failure
+									if c.state.terminated.exit_code != 0:
+										print("Container '%s' of pod '%s:%s' failed"
+											  % (c.name, uid[0], uid[1]))
+										return False
+
+									# If a sufficient container completed, assume overall completion
+									elif c.name in self.pods[uid]["sufficient_containers"]:
+										print("Container '%s' of pod '%s:%s' succeeded, finishing"
+											  % (c.name, uid[0], uid[1]))
+										return True
+
+						if etype == "DELETED":
+							print("Pod %s/%s has been deleted" % (object.metadata.namespace, object.metadata.name))
+							del self.pods[uid]
+							if not self.pods:
+								w.stop()
+								print("Done watching events")
+
+					if not printed_all_up:
+						all_up = True
+						for k, p in self.pods.items():
+							if p["status"] != "Running":
+								all_up = False
+							if p["ready"] != p["total"]:
+								all_up = False
+						if all_up:
+							printed_all_up = True
+							all_up_time = datetime.now()
+							print("All pods up and running (setup took %s)" % str(all_up_time-start_time))
+
+			except Exception as e:
+				if str(e) != "TERM":
+					print("Exception while monitoring pods")
+					print(traceback.format_exc())
+				return False
 
 		return True

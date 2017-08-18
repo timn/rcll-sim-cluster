@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import time
+import signal
 import kubernetes
 import traceback
 from datetime import datetime, timedelta
@@ -27,6 +28,7 @@ class SimController(object):
 		self.namespace = self.config.kube_namespace
 		self.job_namespace = job_namespace or self.config.kube_namespace
 		self.run_at_most = run_at_most
+		self.quit = False
 
 		self.tournament_regex = None
 		if tournament is not None:
@@ -43,6 +45,8 @@ class SimController(object):
 		                    collection=self.config.mongodb_queue_col)
 
 		self.podctrl = PodController(self.config)
+
+		signal.signal(signal.SIGTERM, self.term_handler)
 
 	def __enter__(self):
 		if self.job_namespace == "auto":
@@ -65,6 +69,11 @@ class SimController(object):
 		if self.pod_name is not None:
 			self.set_pod_label('job-namespace', None)
 		self.initialized = False
+
+	def term_handler(self, signum, frame):
+		print("TERM signal received")
+		self.quit = True
+		raise Exception("TERM")
 
 	def generate_namespace_name(self, name_prefix):
 		kube_config = kubernetes.config.load_incluster_config()
@@ -202,7 +211,7 @@ class SimController(object):
 			print("Filtering job names by '%s'" % self.tournament_regex)
 		job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
 		jobs_run = 0
-		while job is not None:
+		while not self.quit and job is not None:
 			# We do +1 here to include the one we are currently handling
 			(all_pending, without_recently_failed) = \
 			    self.wq.num_pending_jobs(recently_failed_deadline, name_regex=self.tournament_regex)
