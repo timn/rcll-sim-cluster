@@ -178,6 +178,7 @@ if __name__ == '__main__':
 		   "defeats": { "$sum": "$doc.defeat" },
 		   "draws": { "$sum": "$doc.draw" },
 		   "points": { "$sum": "$doc.points" },
+		   "points_max": { "$max": "$doc.points" },
 		   "points_against": { "$sum": "$doc.points_against" }}},
 
 		 # Pipeline branches here
@@ -211,8 +212,8 @@ if __name__ == '__main__':
 
 	print("\n*** Results per Team ***\n")
 	for doc in d["points_wins_per_team"]:
-		print("%-16s  wins: %3d  defeats: %3d  draws: %3d  points: %5d  points against: %5d" \
-		      % (doc["_id"], doc["wins"], doc["defeats"], doc["draws"], doc["points"], doc["points_against"]))
+		print("%-16s  wins: %3d  defeats: %3d  draws: %3d  points: %5d  points against: %5d  points max: %3d" \
+		      % (doc["_id"], doc["wins"], doc["defeats"], doc["draws"], doc["points"], doc["points_against"], doc["points_max"]))
 	
 	#for t in teams:
 	#print("Min/Avg/Max per Team")
