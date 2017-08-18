@@ -6,9 +6,11 @@ from job_generator import JobGenerator
 from config import Configuration
 
 import os
+import sys
 import argparse
 import time
 import kubernetes
+import traceback
 from datetime import datetime, timedelta
 from traceback import print_exc
 from kubernetes.client import V1DeleteOptions
@@ -299,4 +301,9 @@ if __name__ == '__main__':
 		include_recently_failed = True
 
 	with SimController(include_recently_failed, job_namespace, tournament=tournament, run_at_most=run_at_most) as sim_ctrl:
-		sim_ctrl.run()
+		try:
+			sim_ctrl.run()
+		except Exception as e:
+			print("Failure running script, aborting")
+			print(traceback.format_exc())
+			sys.exit(-2)
