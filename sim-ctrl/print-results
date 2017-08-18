@@ -15,6 +15,8 @@ if __name__ == '__main__':
 	                    help='Show participating teams.')
 	parser.add_argument('--individual-games', action='store_true',
 	                    help='Show results of individual games.')
+	parser.add_argument('--requeue-invalid', action='store_true',
+	                    help='Requeue completed games without score.')
 	args = parser.parse_args()
 
 	config = Configuration()
@@ -39,8 +41,9 @@ if __name__ == '__main__':
 		for t in teams:
 			print("  - %s" % t)
 
-	if args.individual_games:
-		print("\n*** Individual Results ***\n")
+	if args.individual_games or args.requeue_invalid:
+		if args.individual_games:
+			print("\n*** Individual Results ***\n")
 		docs = wq.collection.find(tournament_filter)
 		for d in docs:
 			job_name = d["name"]
@@ -56,11 +59,16 @@ if __name__ == '__main__':
 			if "failed" in d["status"] and len(d["status"]["failed"]) > 0:
 				state += ", failed %d times" % len(d["status"]["failed"])
 
-			print("%6s %16s vs. %-16s %-10s (%s)" \
-			      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
-			         d["params"]["parameter_vars"]["team_name_cyan"],
-			         d["params"]["parameter_vars"]["team_name_magenta"],
-			         score, state))
+			if d["status"]["state"] == "completed" and game_report is None:
+				print("*** Requeuing invalid job %s" % job_name)
+				wq.requeue_item(job_name)
+
+			if args.individual_games:
+				print("%6s %16s vs. %-16s %-10s (%s)" \
+				      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
+				         d["params"]["parameter_vars"]["team_name_cyan"],
+				         d["params"]["parameter_vars"]["team_name_magenta"],
+				         score, state))
 
 	# MapReduce version from webview-refbox
 	# team_reports = game_report_collection.inline_map_reduce( # map function
