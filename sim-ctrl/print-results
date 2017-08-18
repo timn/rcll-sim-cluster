@@ -52,8 +52,16 @@ if __name__ == '__main__':
 			                                               "teams.1": { "$ne": "" }})
 			score="No score"
 			if game_report is not None:
-				score = "%3d:%3d" \
-				      % (game_report["total-points"][0], game_report["total-points"][1])
+				win_indicator = "-"
+				if game_report["total-points"][0] > game_report["total-points"][1]:
+					win_indicator = "C"
+				elif game_report["total-points"][1] > game_report["total-points"][0]:
+					win_indicator = "M"
+
+				score = "%3d:%3d  %s" \
+				      % (game_report["total-points"][0],
+				         game_report["total-points"][1],
+				         win_indicator)
 
 			state = d["status"]["state"]
 			if "failed" in d["status"] and len(d["status"]["failed"]) > 0:
