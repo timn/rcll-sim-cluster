@@ -34,6 +34,12 @@ spec:
         #- name: TOURNAMENT
         #  value: TestTournament
 
+        # Limit the number of games to play. This is actually the maximum number
+        # of games player per pod. So, RUN_AT_MOST * job-parallelism is the actual
+        # number of games played as a maximum.
+        #- name: RUN_AT_MOST
+        #  value: "1"
+
         # This is the namespace in which the per-job pods run, i.e., the
         # pods that make up the simulation. Setting it to auto (required
         # if spec.parallelism > 1) will cause the creation of new per-job-pod
