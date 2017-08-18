@@ -12,19 +12,19 @@ import kubernetes
 from datetime import datetime, timedelta
 from traceback import print_exc
 from kubernetes.client import V1DeleteOptions
+from kubernetes.watch import Watch
 
 class SimController(object):
 	def __init__(self, include_recently_failed=False, job_namespace=None, tournament=None, run_at_most=0):
 		self.config	= Configuration()
 		self.include_recently_failed = include_recently_failed
+		if 'POD_NAME' in os.environ:
+			self.pod_name = os.environ['POD_NAME']
+		else:
+			self.pod_name = None
 		self.namespace = self.config.kube_namespace
 		self.job_namespace = job_namespace or self.config.kube_namespace
 		self.run_at_most = run_at_most
-		if self.job_namespace == "auto":
-			name_prefix = "rcll-sim-"
-			if "JOB_NAMESPACE_PREFIX" in os.environ:
-				name_prefix = os.environ["JOB_NAMESPACE_PREFIX"]
-			self.job_namespace = self.generate_namespace_name(name_prefix)
 
 		self.tournament_regex = None
 		if tournament is not None:
@@ -43,6 +43,15 @@ class SimController(object):
 		self.podctrl = PodController(self.config)
 
 	def __enter__(self):
+		if self.job_namespace == "auto":
+			if self.pod_name is None:
+				raise Exception("Cannot use namespace auto determination if POD_NAME not set")
+			name_prefix = "rcll-sim-"
+			if "JOB_NAMESPACE_PREFIX" in os.environ:
+				name_prefix = os.environ["JOB_NAMESPACE_PREFIX"]
+			self.job_namespace = self.generate_namespace_name(name_prefix)
+		if self.pod_name is not None:
+			self.set_pod_label('job-namespace', self.job_namespace)
 		if self.job_namespace != "default":
 			self.create_namespace()
 		self.initialized = True
@@ -51,6 +60,8 @@ class SimController(object):
 	def __exit__(self, exc_type, exc_value, traceback):
 		if self.job_namespace != "default":
 			self.delete_namespace()
+		if self.pod_name is not None:
+			self.set_pod_label('job-namespace', None)
 		self.initialized = False
 
 	def generate_namespace_name(self, name_prefix):
@@ -58,9 +69,7 @@ class SimController(object):
 		core_api = kubernetes.client.CoreV1Api()
 		batch_api = kubernetes.client.BatchV1Api()
 
-		pod_name  = os.environ["POD_NAME"]
-
-		pod = core_api.read_namespaced_pod(pod_name, self.namespace)
+		pod = core_api.read_namespaced_pod(self.pod_name, self.namespace)
 		job_name = pod.metadata.labels["job-name"]
 		job = batch_api.read_namespaced_job(job_name, self.namespace)
 
@@ -71,24 +80,34 @@ class SimController(object):
 
 		num_tries = 0
 		pods=[]
-		while num_tries < 30:
+		print("Determining job pod set")
+		while num_tries < 150:
 			all_pods = core_api.list_namespaced_pod(self.namespace,
 			                                        label_selector=label_selector_str,
 			                                        field_selector=field_selector_str)
-			pods = list(map(lambda p: p.metadata.name, all_pods.items))
-			if len(pods) == parallelism:
+			pods = list(map(lambda p: (p.metadata.name, dict(p.metadata.labels)), all_pods.items))
+			if len(pods) == parallelism and self.pod_name in [p[0] for p in pods]:
 				break
 			else:
 				num_tries += 1
 				time.sleep(1)
 
-		pods.sort()
+		pods.sort(key=lambda p: p[0])
 
 		if len(pods) == parallelism:
-			index = pods.index(pod_name)
-			return "%s%d" % (name_prefix, index)
+			pods_without_namespace = sorted([p[0] for p in pods if 'job-namespace' not in p[1]])
+			if self.pod_name not in pods_without_namespace:
+				raise Exception("Self not included in list of pods without namespace")
+
+			possible_namespaces = ["%s%s" % (name_prefix, i) for i in range(0, parallelism)]
+			used_namespaces = [p[1]['job-namespace'] for p in pods if 'job-namespace' in p[1]]
+			namespaces = sorted(list(set(possible_namespaces) - set(used_namespaces)))
+			if len(namespaces) != len(pods_without_namespace):
+				raise Exception("Inconsistent namespaces and pods without namespace")
+
+			return namespaces[pods_without_namespace.index(self.pod_name)]
 		else:
-			raise Exception("Failed to determine pod index")
+			raise Exception("Failed to determine all job pods")
 
 	def create_namespace(self):
 		print("Creating namespace '%s'" % self.job_namespace)
@@ -123,7 +142,25 @@ class SimController(object):
 			"data": dict(secret.data)
 		}
 		core_api.create_namespaced_secret(to_namespace, manifest)
-		
+
+
+	def set_pod_label(self, label_key, label_value, pod_name = None):
+		if pod_name is None:
+			pod_name = self.pod_name
+
+		if pod_name is None: return
+
+		kube_config = kubernetes.config.load_incluster_config()
+		core_api = kubernetes.client.CoreV1Api()
+		patch = []
+		if label_value is not None:
+			patch.append({ "op": "add", "path": "/metadata/labels/%s" % label_key,
+			               "value": label_value })
+		else:
+			patch.append({ "op": "remove", "path": "/metadata/labels/%s" % label_key })
+		#print("Patch: %s" % str(patch))
+		core_api.patch_namespaced_pod(pod_name, self.namespace, patch)
+
 	def run(self):
 		if not self.initialized:
 			raise Exception("Must use 'with' statement to use instance")
