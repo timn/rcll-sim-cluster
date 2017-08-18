@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+from work_queue import WorkQueue
+from config import Configuration
+
+import argparse
+from datetime import datetime, timedelta
+from pprint import pprint
+import matplotlib
+import statistics
+import numpy as np
+import random
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='Print job info')
+	parser.add_argument('--tournament', metavar='T-NAME', required=True,
+	                    help='Name of simulation tournament')
+	parser.add_argument('--save-pdf', metavar='FILE',
+	                    help='Save file directly as a PDF.')
+	parser.add_argument('--shuffle', action='store_true',
+	                    help='Shuffle and anonymize results.')
+	args = parser.parse_args()
+
+	config = Configuration()
+	wq = WorkQueue(host=config.mongodb_host,
+	               port=config.mongodb_port,
+	               uri=config.mongodb_uri,
+	               srv_name=config.mongodb_rs_srv,
+	               database=config.mongodb_queue_db,
+	               replicaset=config.mongodb_rs,
+	               collection=config.mongodb_queue_col)
+
+	refbox_db = wq.client["refbox"]
+	game_report_collection = refbox_db["game_report"]
+
+	tournament_regex = { "$regex": "^%s:\d+:.*" % args.tournament}
+	tournament_filter = {"name": tournament_regex}
+
+	# Aggregation pipeline version
+	cursor = game_report_collection.aggregate(\
+	     # Extract reports concerning the given tournament
+		[{"$match":
+		  {"job_name": tournament_regex,
+		   "teams.0": { "$ne": "" },
+		   "teams.1": { "$ne": "" }}},
+		 # Project document to contain only relevant information
+		 {"$project":
+		  { "job_name": "$job_name",
+		    "team_cyan": { "$arrayElemAt": ["$teams", 0]},
+		    "team_magenta": { "$arrayElemAt": ["$teams", 1]},
+		    "points_cyan": { "$arrayElemAt": ["$total-points", 0]},
+		    "points_magenta": { "$arrayElemAt": ["$total-points", 1]}}
+		 },
+		 # Emit list of one document per team
+		 {"$project":
+		  {"job_name": "$job_name",
+		   "doc": [{"job_name": "$job_name", "team": "$team_cyan",
+		              "points": "$points_cyan"},
+		             {"job_name": "$job_name", "team": "$team_magenta",
+		              "points": "$points_magenta"}]}},
+		 # Unwind created array again into multiple documents
+		 {"$unwind": "$doc"},
+
+		 # Group by team summing wins, defeats, draws, points
+		 {"$group":
+		  {"_id": "$doc.team",
+		   "scores": { "$push": "$doc.points" }}},
+
+		 {"$sort": { "_id": 1 }},
+		 ])
+
+	data = []
+	labels = []
+	for d in cursor:
+		print("Team %s: %d  %s" % (d["_id"], len(d["scores"]), str(sorted(d["scores"]))))
+		labels.append(d["_id"])
+		data.append(d["scores"])
+
+		q = np.percentile(d["scores"], np.arange(0, 100, 25))
+		print("q: %s" % str(q))
+
+	if args.shuffle:
+		random.shuffle(data)
+		labels = ['?' for _ in labels]
+
+	if args.save_pdf:
+		matplotlib.use('Agg')
+
+	import matplotlib.pyplot as plt
+	from matplotlib.backends.backend_pdf import PdfPages
+
+	fig, axes = plt.subplots()
+	axes.set_ymargin(0.001)
+	meanprops=dict(linestyle='--', color='darkgreen')
+	axes.boxplot(data, labels=labels, showmeans=True, meanline=True, meanprops=meanprops)
+
+	if args.save_pdf is not None:
+		pp = PdfPages(args.save_pdf)
+		pp.savefig(fig)
+		pp.close()
+	else:
+		plt.show()
