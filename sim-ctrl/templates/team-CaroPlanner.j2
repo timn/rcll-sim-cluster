@@ -5,6 +5,8 @@
 {# This MUST derive robot-pod.yaml.j2 #}
 {% set robot_pod_template = "robot-pod-CaroPlanner" %}
 {% set robot_pod_fawkes_plugins = "gazsim-meta-agent" %}
+{% set robot_pod_fawkes_command = "/opt/rcll-sim/run-component" %}
+{% set robot_pod_fawkes_args = ["fawkes"] %}
 
 {% set create_headless_service_for_central_agent = True %}
 
@@ -25,5 +27,6 @@
       config: gazsim-configurations/default/planner.yaml
       port: 1930
       plugins: m-planner
-
+      command: "/opt/rcll-sim/run-component"
+      args: [ "fawkes" ]
 {% endmacro %}

@@ -19,7 +19,16 @@
       service_name: fawkes-{{ robot_suffix }}
       port: {{ 1920 + fawkes_port_offset + robot_idx }}
       config_num: {{ robot_idx + fawkes_config_offset }}
-      plugins: {{ team_config.robot_pod_fawkes_plugins|default("gazsim-meta-robotino-ros,gazsim-meta-robotino-vision-high-level,gazsim-navgraph-generator") }}
+      plugins: "{{ team_config.robot_pod_fawkes_plugins }}"
+{%- if team_config.robot_pod_fawkes_command is defined %}
+      command: "{{ team_config.robot_pod_fawkes_command }}"
+{%- endif %}
+{%- if team_config.robot_pod_fawkes_args is defined %}
+      args:
+{%- for a in team_config.robot_pod_fawkes_args %}
+        - "{{ a }}"
+{%- endfor %}
+{%- endif %}
     ros:
       service_name: rosmaster-{{ robot_suffix }}
       port: 11311

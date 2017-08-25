@@ -93,7 +93,13 @@ spec:
   - name: fawkes
     image: {{ robot_pod_image }}
     imagePullPolicy: Always
-    command: ["/opt/fawkes-runenv/run-fawkes"]
+    command: ["{{ fawkes.command|default("/opt/fawkes-runenv/run-fawkes") }}"]
+{%- if fawkes.args is defined %}
+    args:
+{%- for a in fawkes.args %}
+      - "{{ a }}"
+{%- endfor %}
+{%- endif %}
     env:
     - name: CONFIG
       value: gazsim-configurations/default/robotino{{ fawkes.config_num }}.yaml
