@@ -68,7 +68,7 @@ spec:
         - name: PYTHONUNBUFFERED
           value: "true"
 
-      terminationGracePeriodSeconds: 120
+      terminationGracePeriodSeconds: 180
       imagePullSecrets:
         - name: regsecret
       restartPolicy: Never
