@@ -5,6 +5,7 @@ from job_generator import JobGenerator
 import argparse
 import itertools
 import datetime
+import random
 from traceback import print_exc
 
 class TournamentGenerator(object):
@@ -15,14 +16,21 @@ class TournamentGenerator(object):
 	def pairings(self, teams):
 		return [p for p in itertools.permutations(teams, r=2)]
 
-	def pairings_iterator(self, pairings, n=1):
-		return itertools.chain.from_iterable(itertools.repeat(pairings, n))
+	def pairings_iterator(self, pairings, n=1, shuffle=False):
+		if shuffle:
+			for i in range(0, n):
+				shuffled_pairings = list(pairings)
+				random.shuffle(shuffled_pairings)
+				for p in shuffled_pairings:
+					yield p
+		else:
+			return itertools.chain.from_iterable(itertools.repeat(pairings, n))
 
-	def generate(self, tournament_name, teams, n=1, time_per_game=0, num_concurrent_games=1):
+	def generate(self, tournament_name, teams, n=1, time_per_game=0, num_concurrent_games=1, shuffle=False):
 		pairings = self.pairings(teams)
 		num_games = 0
 		print("Number of pairings: %d" % len(pairings))
-		for p in self.pairings_iterator(pairings, n):
+		for p in self.pairings_iterator(pairings, n, shuffle=shuffle):
 			try:
 				(jobname, idnum, params) = self.jobgen.generate_and_store(tournament_name,
 				                                                          team_cyan=p[0], team_magenta=p[1])
@@ -52,6 +60,8 @@ if __name__ == '__main__':
 	                    help='Template file for job parameters.')
 	parser.add_argument('--iterations', metavar='N', type=int, default=1,
 	                    help='Number of iterations to play (default 1)')
+	parser.add_argument('--shuffle', dest='shuffle', action='store_true',
+	                    help='Shuffle pairings in each iteration.')
 	parser.add_argument('--dry-run', dest='dry_run', action='store_true',
 	                    help='Only run generation, but do not store in work queue.')
 	parser.add_argument('--time-per-game', metavar="T", type=int, default=0,
@@ -69,4 +79,6 @@ if __name__ == '__main__':
 		print("\n*** ATTENTION: This is a dry run, no jobs actually stored ***\n")
 	tg = TournamentGenerator(args.template, debug=args.debug, dry_run=args.dry_run)
 	tg.generate(args.name, args.teams, args.iterations,
-	            time_per_game=args.time_per_game, num_concurrent_games=args.num_concurrent_games)
+	            time_per_game=args.time_per_game,
+	            num_concurrent_games=args.num_concurrent_games,
+				shuffle=args.shuffle)
