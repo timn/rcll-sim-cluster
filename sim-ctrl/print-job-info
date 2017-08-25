@@ -48,8 +48,8 @@ if __name__ == '__main__':
 		print("Job Stats for '%s'" % args.tournament)
 	else:
 		print("Job Stats for all tournaments")
-	for key, value in jobstat.items():
-		print("  - %-16s: %2d" % (key, value))
+	for key in sorted(jobstat.keys()):
+		print("  - %-16s: %2d" % (key, jobstat[key]))
 
 	if args.list_tournaments:
 		# Aggregation pipeline version
