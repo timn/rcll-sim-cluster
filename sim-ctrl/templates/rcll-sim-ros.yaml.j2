@@ -36,17 +36,15 @@ metadata:
   namespace: {{ namespace }}
   labels:
     app: ros
+{% if not disable_ros_rcll_integration %}
     rcll-role: refbox-comm
+{% endif %}
     robot: central
     team-color: {{ team.color|lower }}
   annotations:
     scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
   hostname: rcll-sim-ros-{{ team.color|lower }}
-
-  volumes:
-  - name: shared-navgraph
-    emptyDir: {}
 
   containers:
   - name: roscore
@@ -65,6 +63,7 @@ spec:
         memory: "200Mi"
         cpu: "250m"
 
+{% if not disable_ros_rcll_integration %}
   - name: roslaunch-integration
     image: {{ rcll_sim_ros_image }}
     imagePullPolicy: Always
@@ -150,6 +149,11 @@ spec:
     volumeMounts:
     - name: shared-navgraph
       mountPath: /run/navgraph
+
+  volumes:
+  - name: shared-navgraph
+    emptyDir: {}
+{% endif %}
 
   imagePullSecrets:
     - name: regsecret

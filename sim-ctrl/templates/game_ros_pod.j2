@@ -13,16 +13,17 @@
 {%- endfor %}
     ros:
       port: 11311
+    team:
+      name: {{ team_name }}
+      color: {{ team_color|upper }}
+      crypto_key: {{ team_config.crypto_key|default("randomkey") }}
+{% if not team_config.disable_ros_rcll_integration %}
     fawkes:
 {%- for i in range(1, team_config.num_robots + 1) %}
       - host: fawkes-{{ color_prefix|lower }}{{ i }}
         port: {{ 1920 + fawkes_port_offset + i }}
 {%- endfor %}
     navgraph_rosmaster: http://rosmaster-{{ color_prefix|lower }}1:11311
-    team:
-      name: {{ team_name }}
-      color: {{ team_color|upper }}
-      crypto_key: {{ team_config.crypto_key|default("randomkey") }}
     refbox:
       peer_address: refbox
       disable_beacon_sender: {{ team_config.disable_beacon_sender|default("false") }}
@@ -35,6 +36,9 @@
         magenta_recv_port: {{ 4510 + refbox_peer_port_offset + i }}
         magenta_send_port: {{ 4530 + refbox_peer_port_offset + i }}
 {%- endfor %}
+{%- else %}
+    disable_ros_rcll_integration: true
+{%- endif %}
 {% else -%}
 # No ROS pod for team {{ team_name }} ({{ team_color }})
 {%- endif %}
