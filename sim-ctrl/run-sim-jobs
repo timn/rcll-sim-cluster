@@ -299,12 +299,13 @@ if __name__ == '__main__':
 
 	run_at_most = 0
 	if "RUN_AT_MOST" in os.environ:
-		run_at_most = os.environ["RUN_AT_MOST"]
+		run_at_most = int(os.environ["RUN_AT_MOST"])
 	if args.run_at_most:
 		run_at_most = args.run_at_most
 
 	include_recently_failed = False
-	if "RUN_ALSO_RECENTLY_FAILED" in os.environ and os.environ["RUN_ALSO_RECENTLY_FAILED"].lower == "true":
+	if "RUN_ALSO_RECENTLY_FAILED" in os.environ \
+	and os.environ["RUN_ALSO_RECENTLY_FAILED"].lower() == "true":
 		include_recently_failed = True
 	if args.include_recently_failed:
 		include_recently_failed = True
