@@ -149,6 +149,8 @@ class WorkQueue(object):
 			                 {"$count": "jobs"}],
 			     "completed": [{"$match": { "status.state": "completed" }},
 			                   {"$count": "jobs"}],
+			     "cancelled": [{"$match": { "status.state": "cancelled" }},
+			                 {"$count": "jobs"}],
 			     "failed": [{"$match": { "status.state": "pending",
 			                             "$and": [ {"status.failed": { "$exists": True} },
 			                                       {"status.failed": { "$gt": [ "$size", 0] }} ]}}],
@@ -163,6 +165,7 @@ class WorkQueue(object):
 			     "pending": {"$arrayElemAt": ["$pending.jobs", 0]},
 			     "running": {"$arrayElemAt": ["$running.jobs", 0]},
 			     "completed": {"$arrayElemAt": ["$completed.jobs", 0]},
+			     "cancelled": {"$arrayElemAt": ["$cancelled.jobs", 0]},
 			     "failed": {"$arrayElemAt": ["$failed.jobs", 0]},
 			     "recently_failed": {"$arrayElemAt": ["$recently_failed.jobs", 0]}}
 		     }])
@@ -172,6 +175,7 @@ class WorkQueue(object):
 			return { "pending": d["pending"] if "pending" in d else 0,
 			         "running": d["running"] if "running" in d else 0,
 			         "completed": d["completed"] if "completed" in d else 0,
+			         "cancelled": d["cancelled"] if "cancelled" in d else 0,
 			         "failed": d["failed"] if "failed" in d else 0,
 			         "recently_failed": d["recently_failed"] if "recently_failed" in d else 0}
 		else:
