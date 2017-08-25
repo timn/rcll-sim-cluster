@@ -59,6 +59,23 @@ parameters:
 {{ game_robot_pod.robot_pod(team_name_magenta, "MAGENTA", team_magenta) }}
 {%- endblock %}
 
+### Optional team-specific agent services
+{% block agent_services_cyan -%}
+{% if team_cyan.create_headless_service_for_central_agent %}
+- template: rcll-sim-central-agent-service
+  vars:
+    team_color: CYAN
+{%- endif %}
+{%- endblock %}
+
+{% block agent_services_magenta -%}
+{% if team_magenta.create_headless_service_for_central_agent %}
+- template: rcll-sim-central-agent-service
+  vars:
+    team_color: MAGENTA
+{%- endif %}
+{%- endblock %}
+
 ### Optional team-specific ROS integration pods
 {% import "game_ros_pod.j2" as game_ros_pod with context -%}
 {% block ros_pod_cyan -%}

@@ -1,18 +1,3 @@
-# Headless service for Fawkes planner pod
-apiVersion: v1
-kind: Service
-metadata:
-  name: agent-{{ team.color[0]|lower }}1
-  namespace: {{ namespace }}
-spec:
-  selector:
-    app: actorsim
-    robot: central
-    team-color: {{ team.color|lower }}
-  clusterIP: None
-  ports:
-  - port: 1
----
 apiVersion: v1
 kind: Pod
 metadata:
@@ -20,6 +5,7 @@ metadata:
   namespace: {{ namespace }}
   labels:
     app: actorsim
+    rcll-role: refbox-comm
     robot: central
     team-color: {{ team.color|lower }}
   annotations:

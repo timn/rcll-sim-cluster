@@ -1,20 +1,3 @@
-{%- for r in robots %}
-# Headless service for agent Pod
-apiVersion: v1
-kind: Service
-metadata:
-  name: agent-{{ team.color[0]|lower }}{{ loop.index }}
-  namespace: {{ namespace }}
-spec:
-  selector:
-    app: ros
-    robot: central
-    team-color: {{ team.color|lower }}
-  clusterIP: None
-  ports:
-  - port: 1
----
-{%- endfor %}
 # Service for central ROS core
 apiVersion: v1
 kind: Service
@@ -53,6 +36,7 @@ metadata:
   namespace: {{ namespace }}
   labels:
     app: ros
+    rcll-role: refbox-comm
     robot: central
     team-color: {{ team.color|lower }}
   annotations:

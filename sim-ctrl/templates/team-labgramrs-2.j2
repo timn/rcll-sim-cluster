@@ -2,6 +2,8 @@
 {% set robot_pod_image = "timn/fawkes-robotino:labgramrs2" %}
 {% set crypto_key =      "randomkey" %}
 
+{% set create_headless_service_for_central_agent = True %}
+
 {% macro pods(team_name, team_color) %}
 {% set color_prefix = team_color[0] -%}
 - template: actorsim

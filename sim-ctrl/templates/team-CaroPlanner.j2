@@ -6,6 +6,8 @@
 {% set robot_pod_template = "robot-pod-CaroPlanner" %}
 {% set robot_pod_fawkes_plugins = "gazsim-meta-agent" %}
 
+{% set create_headless_service_for_central_agent = True %}
+
 {% macro pods(team_name, team_color) %}
 - template: fawkes-planner
   vars:

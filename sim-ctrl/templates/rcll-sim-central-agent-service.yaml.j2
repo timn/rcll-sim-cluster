@@ -1,0 +1,17 @@
+{# for r in robots #}
+# Headless service for agent Pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-{{ team_color[0]|lower }}1
+  namespace: {{ namespace }}
+spec:
+  selector:
+    rcll-role: refbox-comm
+    robot: central
+    team-color: {{ team_color|lower }}
+  clusterIP: None
+  ports:
+  - port: 1
+{# --- #}
+{# endfor #}
