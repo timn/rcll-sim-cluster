@@ -34,9 +34,9 @@ spec:
       - name: kibana-logging
         image: gcr.io/google_containers/kibana:v4.6.1-1
         resources:
-          # keep request = limit to keep this container in guaranteed class
+          # burstable class for faster startup
           limits:
-            cpu: 100m
+            cpu: 1000m
           requests:
             cpu: 100m
         env:
