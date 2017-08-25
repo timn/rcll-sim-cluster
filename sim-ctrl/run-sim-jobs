@@ -209,9 +209,11 @@ class SimController(object):
 			recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
 		if self.tournament_regex is not None:
 			print("Filtering job names by '%s'" % self.tournament_regex)
-		job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
 		jobs_run = 0
-		while not self.quit and job is not None:
+		job = None
+		if not self.quit:
+			job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
+		while job is not None:
 			# We do +1 here to include the one we are currently handling
 			(all_pending, without_recently_failed) = \
 			    self.wq.num_pending_jobs(recently_failed_deadline, name_regex=self.tournament_regex)
@@ -266,7 +268,7 @@ class SimController(object):
 				recently_failed_deadline = datetime.utcnow() - timedelta(minutes=15)
 
 			jobs_run += 1
-			if self.run_at_most == 0 or jobs_run < self.run_at_most:
+			if not self.quit and (self.run_at_most == 0 or jobs_run < self.run_at_most):
 				job = self.wq.get_next_item(recently_failed_deadline, name_regex=self.tournament_regex)
 			else:
 				job = None
