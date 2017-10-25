@@ -1,4 +1,23 @@
-{# for r in robots #}
+{% for r in robots %}
+# Headless service for agent Pod {{ team_color }}-{{ loop.index }} ({{ r }})
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-{{ team_color[0]|lower }}{{ loop.index }}
+  namespace: {{ namespace }}
+spec:
+  selector:
+    rcll-role: refbox-comm
+    robot: central
+    team-color: {{ team_color|lower }}
+  clusterIP: None
+  ports:
+  - port: 1
+{% if not loop.last %}
+---
+{% endif %}
+{% else %}
+{# If no robot has been configured (i.e., jobs created with old template #}
 # Headless service for agent Pod
 apiVersion: v1
 kind: Service
@@ -13,5 +32,4 @@ spec:
   clusterIP: None
   ports:
   - port: 1
-{# --- #}
-{# endfor #}
+{% endfor %}

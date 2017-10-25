@@ -65,6 +65,10 @@ parameters:
 - template: rcll-sim-central-agent-service
   vars:
     team_color: CYAN
+    robots:
+{%- for i in range(1, team_cyan.num_robots+1) %}
+      - C-R{{ i }}
+{%- endfor %}
 {%- endif %}
 {%- endblock %}
 
@@ -73,6 +77,10 @@ parameters:
 - template: rcll-sim-central-agent-service
   vars:
     team_color: MAGENTA
+    robots:
+{%- for i in range(1, team_magenta.num_robots+1) %}
+      - M-R{{ i }}
+{%- endfor %}
 {%- endif %}
 {%- endblock %}
 
