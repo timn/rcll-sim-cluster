@@ -76,6 +76,11 @@ class WorkQueue(object):
 		#print("Item: %s" % item)
 		return item
 
+	def get_items(self, name_regex):
+		filter = {"name": { "$regex": name_regex }}
+		for i in self.collection.find(filter):
+			yield i
+	
 	def get_next_item(self, recently_failed_deadline=None, name_regex=None):
 		filter = {"status.state": "pending"}
 		if name_regex is not None:
