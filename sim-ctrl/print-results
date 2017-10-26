@@ -72,11 +72,20 @@ if __name__ == '__main__':
 				wq.requeue_item(job_name)
 
 			if args.individual_games:
+				team_cyan    = d["params"]["parameter_vars"]["team_name_cyan"]
+				team_magenta = d["params"]["parameter_vars"]["team_name_magenta"]
+				team_cyan_len = len(team_cyan)
+				team_magenta_len = len(team_magenta)
+				if win_indicator == "C":
+					team_cyan = "\033[4m%s\033[0m" % team_cyan
+				elif win_indicator == "M":
+					team_magenta = "\033[4m%s\033[0m" % team_magenta
+				team_cyan = ' '*(16-team_cyan_len) + team_cyan
+				team_magenta = team_magenta + ' '*(16-team_magenta_len)
+
 				print("%6s %16s vs. %-16s %-10s (%s)" \
 				      % (job_name[job_name.find(":")+1:job_name.rfind(":")],
-				         d["params"]["parameter_vars"]["team_name_cyan"],
-				         d["params"]["parameter_vars"]["team_name_magenta"],
-				         score, state))
+				         team_cyan, team_magenta, score, state))
 
 	# MapReduce version from webview-refbox
 	# team_reports = game_report_collection.inline_map_reduce( # map function
