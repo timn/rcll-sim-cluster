@@ -106,11 +106,12 @@ class WorkQueue(object):
 		                   "status.completed": datetime.datetime.utcnow()}}
 		self.collection.update_one(filter, update)
 
-	def requeue_item(self, name):
+	def requeue_item(self, name, mark_failed=True):
 		filter = {"name": name}
 		update = {"$set":   {"status.state": "pending"},
-		          "$unset": {"status.running": ""},
-		          "$push":  {"status.failed": datetime.datetime.utcnow()}}
+		          "$unset": {"manifests": "", "status.running": "", "status.completed": ""}}
+		if mark_failed:
+			update["$push"] = {"status.failed": datetime.datetime.utcnow()}
 		self.collection.update_one(filter, update)
 
 	def update_item(self, name, update):
