@@ -93,6 +93,8 @@ if __name__ == '__main__':
 	axes.set_ymargin(0.001)
 	meanprops=dict(linestyle='--', color='darkgreen')
 	axes.boxplot(data, labels=labels, showmeans=True, meanline=True, meanprops=meanprops)
+	labels = axes.get_xticklabels()
+	plt.setp(labels, rotation=30, fontsize=10)
 
 	if args.save_pdf is not None:
 		pp = PdfPages(args.save_pdf)
