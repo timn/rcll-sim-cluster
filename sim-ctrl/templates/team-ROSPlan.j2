@@ -4,9 +4,14 @@
 
 {% set run_ros_pod = True %}
 {% set create_headless_service_for_central_agent = True %}
+{% set run_rosplan_anytime = False %}
 
 {% macro pods(team_name, team_color) %}
+{% if run_rosplan_anytime %}
+- template: rcll-sim-rosplan-anytime
+{% else %}
 - template: rcll-sim-rosplan
+{% endif %}
   vars:
     rcll_sim_rosplan_image: {{ docker_registry }}timn/rcll-sim-rosplan:2016-f25-kinetic
     robots:
@@ -17,5 +22,8 @@
     team:
       name: {{ team_name }}
       color: {{ team_color }}
-    autostart_planning: !!str true
+    autostart_planning: "true"
+{% if run_rosplan_anytime %}
+    planning_timeout: "20"
+{% endif %}
 {% endmacro %}
