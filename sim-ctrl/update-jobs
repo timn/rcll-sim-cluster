@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+
+from job_generator import JobGenerator
+from config import Configuration
+
+import argparse
+from traceback import print_exc
+import copy
+import jinja2
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Job')
+	parser.add_argument('--jobs-regex', metavar='REGEX', required=True,
+	                    help='Regular expression to determine jobs')
+	parser.add_argument('--template', metavar='FILENAME',
+	                    default='/opt/rcll-sim-ctrl/templates/game.yaml.j2',
+	                    help='Template file for job parameters.')
+	parser.add_argument('--debug', dest='debug', action='store_true',
+	                    help='Template file for job parameters.')
+	parser.add_argument('--print-diffs', dest='print_diffs', action='store_true',
+	                    help='Enable to see diffs or parameter documents.')
+	parser.add_argument('--dry-run', action='store_true',
+	                    help='Only run generation, but do not store in work queue.')
+	args = parser.parse_args()
+
+	if args.dry_run:
+		print("\n*** ATTENTION: This is a dry run, no jobs actually stored ***\n")
+
+	try:
+		jobgen = JobGenerator(args.template, args.debug, dry_run=args.dry_run)
+		jobgen.update_params(args.jobs_regex, print_diffs=args.print_diffs)
+
+	except:
+		print("\nFailed to generate job")
+		print_exc()
