@@ -221,7 +221,19 @@ if __name__ == '__main__':
 			                 "cond": { "$eq": ["$max_wins", "$$team.wins"]}}}}},
 			   # unwind resulting filtered array into one document per team
 			   {"$unwind": "$best"}
-		   ]}}
+		   ],
+
+		   # Overall tournament ranking
+		   "tournament_ranking": [
+			   {"$group":
+			    # Calculate max number of wins, push all teams into an array
+			    {"_id": "$wins",
+			     "teams": { "$push": { "team": "$_id", "wins": "$wins"}}}},
+			   {"$match": { "_id": { "$gt": 0 }}},
+			   {"$sort": { "_id": -1 }},
+			   #{"$limit": 3}
+		   ]
+		  }}
 		 ])
 
 	d = cursor.next()
@@ -237,9 +249,16 @@ if __name__ == '__main__':
 	#for t in teams:
 	#print("Min/Avg/Max per Team")
 
-	print("\n*** Overall Best Performing Team ***\n")
+	print("\n*** Overall Best Performing  ***\n")
 	for doc in d["tournament_best"]:
 		print("%s with %d wins" % (doc["best"]["team"], doc["best"]["wins"]))
+
+	print("\n*** Ranking ***\n")
+	for doc in enumerate(d["tournament_ranking"]):
+		teams = [t["team"] for t in doc[1]["teams"]]
+		print("%d. %-16s (%3d wins)" % (doc[0]+1, teams[0], doc[1]["_id"]))
+		for t in teams[1:]:
+			print("   %-16s" % t)
 
 	print("\n")
 
