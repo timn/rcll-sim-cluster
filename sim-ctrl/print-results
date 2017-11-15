@@ -67,6 +67,16 @@ if __name__ == '__main__':
 			if "failed" in d["status"] and len(d["status"]["failed"]) > 0:
 				state += ", failed %d times" % len(d["status"]["failed"])
 
+			if d["status"]["state"] == "completed" and \
+			   (game_report is None or \
+			    d["params"]["parameter_vars"]["team_name_cyan"] != game_report["teams"][0] or \
+			    d["params"]["parameter_vars"]["team_name_magenta"] != game_report["teams"][1]):
+				if args.requeue_invalid:
+					print("*** Requeuing invalid job %s" % job_name)
+					wq.requeue_item(job_name)
+				else:
+					print("*** WARNING: Invalid job '%s'" % job_name)
+
 			if args.requeue_invalid and d["status"]["state"] == "completed" and game_report is None:
 				print("*** Requeuing invalid job %s" % job_name)
 				wq.requeue_item(job_name)
