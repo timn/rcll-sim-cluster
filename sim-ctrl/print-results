@@ -17,6 +17,8 @@ if __name__ == '__main__':
 	                    help='Show results of individual games.')
 	parser.add_argument('--requeue-invalid', action='store_true',
 	                    help='Requeue completed games without score.')
+	parser.add_argument('only_teams', metavar="TEAM", nargs="*",
+	                    help='Teams to include in the results (empty for all in tournament)')
 	args = parser.parse_args()
 
 	config = Configuration()
@@ -34,6 +36,11 @@ if __name__ == '__main__':
 	tournament_regex = { "$regex": "^%s:\d+:.*" % args.tournament}
 	tournament_filter = {"name": tournament_regex}
 
+	teams_condition = { "$ne": "" }
+	if len(args.only_teams) > 0:
+		teams_condition = { "$in": list(args.only_teams) }
+	
+
 	if args.teams:
 		print("\n*** Teams ***")
 		teams = game_report_collection.distinct("teams", {"job_name": tournament_regex})
@@ -48,8 +55,8 @@ if __name__ == '__main__':
 		for d in docs:
 			job_name = d["name"]
 			game_report = game_report_collection.find_one({"job_name": job_name,
-			                                               "teams.0": { "$ne": "" },
-			                                               "teams.1": { "$ne": "" }})
+			                                               "teams.0": teams_condition,
+			                                               "teams.1": teams_condition})
 			score="No score"
 			if game_report is not None:
 				win_indicator = "-"
@@ -147,8 +154,8 @@ if __name__ == '__main__':
 	     # Extract reports concerning the given tournament
 		[{"$match":
 		  {"job_name": tournament_regex,
-		   "teams.0": { "$ne": "" },
-		   "teams.1": { "$ne": "" }}},
+		   "teams.0": teams_condition,
+		   "teams.1": teams_condition}},
 		 # Project document to contain only relevant information
 		 {"$project":
 		  { "job_name": "$job_name",
