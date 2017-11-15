@@ -243,7 +243,7 @@ if __name__ == '__main__':
 
 	print("\n*** Results per Team ***\n")
 	for doc in d["points_wins_per_team"]:
-		print("%-16s  wins: %3d  defeats: %3d  draws: %3d  points: %5d  points against: %5d  points max: %3d" \
+		print("%-16s  W: %3d  L: %3d  D: %3d  PF: %5d  PA: %5d  PM: %3d" \
 		      % (doc["_id"], doc["wins"], doc["defeats"], doc["draws"], doc["points"], doc["points_against"], doc["points_max"]))
 	
 	#for t in teams:
