@@ -1,0 +1,79 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: nginx-registry-auth-ingress
+  namespace: kube-system
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /registry-auth
+        backend:
+          serviceName: nginx-registry-auth
+          servicePort: auth-http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx-registry-auth
+  name: nginx-registry-auth
+  namespace: kube-system
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8081
+    name: auth-http
+  selector:
+    app: nginx-registry-auth
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-registry-auth
+  name: nginx-registry-auth
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: nginx-registry-auth
+      namespace: kube-system
+      labels:
+        app: nginx-registry-auth
+      annotations:
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+        scheduler.alpha.kubernetes.io/affinity: >
+          {
+            "nodeAffinity": {
+              "requiredDuringSchedulingIgnoredDuringExecution": {
+                "nodeSelectorTerms": [
+                    {"matchExpressions": [{"key": "cluster-services", "operator": "Exists"}]}
+                ]
+              }
+            }
+          }
+    spec:
+      containers:
+      - name: nginx-registry-auth
+        image: defiant.kbsg.rwth-aachen.de:5000/timn/nginx-registry-auth:latest
+        imagePullPolicy: Always
+        command: ["stdbuf", "-oL", "-eL", "/opt/nginx-registry-auth/nginx-registry-auth"]
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "true"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+      imagePullSecrets:
+        - name: defiantregsecret
+

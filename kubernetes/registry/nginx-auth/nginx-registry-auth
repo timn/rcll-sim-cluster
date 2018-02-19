@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+
+# Copyright 2017-2018 Tim Niemueller
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+
+# 1. Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+
+# 2. Redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution.
+
+# 3. Neither the name of the copyright holder nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse
+import os
+
+class AuthHandler(BaseHTTPRequestHandler):
+	def do_GET(self):
+		# Support health check
+		if self.path == '/healthz':
+			return self.send_OK()
+
+		if all (k in self.headers for k in ("X-Registry-URI","X-Registry-User","X-Registry-Method")):
+			uri = urlparse(self.headers['X-Registry-URI'])
+			user = self.headers['X-Registry-User']
+			method = self.headers['X-Registry-Method']
+
+			# For logins
+			if uri.path == '/v2/':
+				return self.send_OK()
+
+			split_path = [e for e in uri.path.split("/") if e != '']
+			if len(split_path) < 2:
+				return self.send_FAIL("Invalid URI, path too short")
+			version = split_path[0]
+			repo = split_path[1]
+
+			if version != "v2":
+				return self.send_FAIL("Version mismatch, not a v2 URI")
+
+			if repo == "timn" and method == "GET":
+				return self.send_OK()
+			elif user == "cluster" and method == "GET":
+				return self.send_OK()
+			elif repo == user:
+				return self.send_OK()
+			elif user == "timn":
+				return self.send_OK()
+			else:
+				return self.send_FAIL("User %s may not access %s (%s)" % (user, repo, method))
+		else:
+			return self.send_FAIL("Headers missing")
+
+	def send_OK(self):
+		self.send_response(200)
+		self.send_header("Content-type", "text/plain")
+		self.end_headers()
+		self.wfile.write(bytes("OK\n", "utf8"))
+
+	def send_FAIL(self, message):
+		print("Fail: %s" % message)
+		for key,value in self.headers.items():
+			print("Header '%s': %s" % (key,value))
+		self.send_response(403)
+		self.send_header("Content-type", "text/plain")
+		self.end_headers()
+		self.wfile.write(bytes("Access Denied\n%s\n" % message, "utf8"))
+
+if __name__ == '__main__':
+	httpd = HTTPServer(("", 8081), AuthHandler)
+	httpd.serve_forever()
+
