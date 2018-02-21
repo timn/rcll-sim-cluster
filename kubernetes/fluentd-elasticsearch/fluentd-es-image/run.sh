@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-"http://localhost:9200"}
-echo ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+# These steps must be executed once the host /var and /lib volumes have
+# been mounted, and therefore cannot be done in the docker build stage.
 
-export KIBANA_BASE_URL=${KIBANA_BASE_URL:-"''"}
-echo "server.basePath: ${KIBANA_BASE_URL}"
-echo "server.basePath: ${KIBANA_BASE_URL}" >> /kibana/config/kibana.yml
+# For systems without journald
+mkdir -p /var/log/journal
 
-/kibana/bin/kibana -e ${ELASTICSEARCH_URL}
+/usr/local/bin/fluentd $@
