@@ -74,6 +74,11 @@ spec:
     spec:
       priorityClassName: system-node-critical
       serviceAccountName: fluentd-es
+      # Despite the comment in the README in our kubeadm-deployed
+      # cluster we do have kube-proxy on the master and want logging
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
       containers:
       - name: fluentd-es
         image: k8s.gcr.io/fluentd-elasticsearch:v2.0.4
