@@ -97,6 +97,8 @@ spec:
           readOnly: true
         - name: config-volume
           mountPath: /etc/fluent/config.d
+        - name: logdata
+          mountPath: /logdata
       nodeSelector:
         beta.kubernetes.io/fluentd-ds-ready: "true"
       terminationGracePeriodSeconds: 30
@@ -111,6 +113,9 @@ spec:
       - name: libsystemddir
         hostPath:
           path: /usr/lib64
+      - name: logdata
+        hostPath:
+          path: /mnt/data/logs
       - name: config-volume
         configMap:
           name: fluentd-es-config-v0.1.4
