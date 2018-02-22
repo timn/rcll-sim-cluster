@@ -55,6 +55,9 @@ spec:
         - name: ceph-bootstrap-rgw-keyring
           secret:
             secretName: ceph-bootstrap-rgw-keyring
+        - name: ceph-bootstrap-rbd-keyring
+          secret:
+            secretName: ceph-bootstrap-rbd-keyring
         - name: mon-directory
           hostPath:
             path: /mnt/data/ceph/mon-data
@@ -91,6 +94,8 @@ spec:
               mountPath: /var/lib/ceph/bootstrap-mds
             - name: ceph-bootstrap-rgw-keyring
               mountPath: /var/lib/ceph/bootstrap-rgw
+            - name: ceph-bootstrap-rbd-keyring
+              mountPath: /var/lib/ceph/bootstrap-rbd
             - name: mon-directory
               mountPath: /var/lib/ceph/mon/data
           livenessProbe:

@@ -39,6 +39,9 @@ spec:
         - name: ceph-bootstrap-rgw-keyring
           secret:
             secretName: ceph-bootstrap-rgw-keyring
+        - name: ceph-bootstrap-rbd-keyring
+          secret:
+            secretName: ceph-bootstrap-rbd-keyring
         - name: osd-directory
 #          emptyDir: {}
           hostPath:
@@ -61,6 +64,8 @@ spec:
               mountPath: /var/lib/ceph/bootstrap-mds
             - name: ceph-bootstrap-rgw-keyring
               mountPath: /var/lib/ceph/bootstrap-rgw
+            - name: ceph-bootstrap-rbd-keyring
+              mountPath: /var/lib/ceph/bootstrap-rbd
             - name: osd-directory
               mountPath: /var/lib/ceph/osd
 # Privileged access is required if you operate on raw devices.
