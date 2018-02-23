@@ -5,3 +5,4 @@ ceph.mds.keyring
 ceph.mon.keyring
 ceph.osd.keyring
 ceph.rgw.keyring
+ceph.rbd.keyring
