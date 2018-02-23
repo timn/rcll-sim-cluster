@@ -74,9 +74,8 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: mongo-persistent-storage
-      annotations:
-        volume.beta.kubernetes.io/storage-class: "rbd"
     spec:
+      storageClassName: rbd
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
