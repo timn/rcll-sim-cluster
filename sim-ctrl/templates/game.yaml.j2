@@ -21,6 +21,7 @@ metadata:
 ---
 parameters:
 ### Common simulation base pods
+- template: rbac
 {% block sim_pod -%}
 - template: sim-refbox
   vars:
