@@ -70,25 +70,20 @@ metadata:
   namespace: {{ namespace }}
   labels:
     app: gzweb
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
-    pod.beta.kubernetes.io/init-containers: '[
-        {
-          "name": "wait-for-gazebo",
-          "image": "{{ gzweb_image }}",
-          "imagePullPolicy": "Always",
-          "command": ["/opt/gzweb/wait-services"],
-          "args": ["gazebo"],
-          "env": [
-            {
-              "name": "MAX_TRIES",
-              "value": "60"
-            }
-          ]
-        }
-      ]'
 spec:
   hostname: gzweb-server
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
+  initContainers:
+  - name: wait-for-gazebo
+    image: "{{ gzweb_image }}"
+    imagePullPolicy: Always
+    command: ["/opt/gzweb/wait-services"]
+    args: ["gazebo"]
+    env:
+    - name: MAX_TRIES
+      value: "60"
   containers:
     - name: gzweb
       image: {{ gzweb_image }}

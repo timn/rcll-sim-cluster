@@ -53,24 +53,19 @@ metadata:
     team-color: {{ team.color|lower }}
 {%- block labels_extra -%}
 {%- endblock %}
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
-    pod.beta.kubernetes.io/init-containers: '[
-        {
-          "name": "wait-for-rcll-sim",
-          "image": "{{ rcll_sim_image }}",
-          "imagePullPolicy": "Always",
-          "command": ["/opt/rcll-sim/wait-services"],
-          "args": ["gazebo", "refbox"],
-          "env": [
-            {
-              "name": "MAX_TRIES",
-              "value": "60"
-            }
-          ]
-        }
-      ]'
 spec:
+  initContainers:
+  - name: wait-for-rcll-sim
+    image: "{{ rcll_sim_image }}"
+    imagePullPolicy: Always
+    command: ["/opt/rcll-sim/wait-services"]
+    args: ["gazebo", "refbox"]
+    env:
+    - name: MAX_TRIES
+      value: "60"
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
   containers:
 {%- block container_roscore %}
   - name: roscore

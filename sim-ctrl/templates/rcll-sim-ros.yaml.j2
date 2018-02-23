@@ -41,10 +41,11 @@ metadata:
 {% endif %}
     robot: central
     team-color: {{ team.color|lower }}
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
   hostname: rcll-sim-ros-{{ team.color|lower }}
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
 
   containers:
   - name: roscore

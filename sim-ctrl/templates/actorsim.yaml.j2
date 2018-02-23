@@ -8,24 +8,19 @@ metadata:
     rcll-role: refbox-comm
     robot: central
     team-color: {{ team.color|lower }}
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
-    pod.beta.kubernetes.io/init-containers: '[
-        {
-          "name": "wait-for-rcll-sim",
-          "image": "{{ rcll_sim_image }}",
-          "imagePullPolicy": "Always",
-          "command": ["/opt/rcll-sim/wait-services"],
-          "args": ["gazebo", "refbox"],
-          "env": [
-            {
-              "name": "MAX_TRIES",
-              "value": "60"
-            }
-          ]
-        }
-      ]'
 spec:
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
+  initContainers:
+  - name: wait-for-rcll-sim
+    image: "{{ rcll_sim_image }}"
+    imagePullPolicy: Always
+    command: ["/opt/rcll-sim/wait-services"]
+    args: ["gazebo", "refbox"]
+    env:
+    - name: MAX_TRIES
+      value: "60"
   containers:
   - name: actorsim
     image: {{ actorsim_image }}

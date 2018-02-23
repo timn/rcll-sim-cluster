@@ -78,10 +78,11 @@ metadata:
     database: mongodb
     mongodb-for: refbox
 {%- endif %}
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
   hostname: rcll-sim
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
   containers:
     - name: gazebo
       image: {{ rcll_sim_image }}

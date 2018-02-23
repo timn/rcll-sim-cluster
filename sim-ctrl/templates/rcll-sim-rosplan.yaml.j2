@@ -22,9 +22,10 @@ metadata:
     app: rosplan
     robot: central
     team-color: {{ team.color|lower }}
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
   containers:
   - name: rosplan
     image: {{ rcll_sim_rosplan_image }}

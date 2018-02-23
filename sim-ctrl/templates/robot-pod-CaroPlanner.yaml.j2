@@ -28,9 +28,10 @@ metadata:
     team-color: {{ team.color|lower }}
     database: mongodb
     replica-set: syncedrobmem
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
   containers:
   - name: mongodb-sync
     image: mongo

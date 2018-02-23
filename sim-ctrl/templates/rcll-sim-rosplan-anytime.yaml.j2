@@ -466,9 +466,10 @@ metadata:
     robot: central
     team-color: {{ team.color|lower }}
     planner: popf-anytime
-  annotations:
-    scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 spec:
+  tolerations:
+  - key: exclusive
+    value: rcll-sim
   containers:
   - name: rosplan
     image: {{ rcll_sim_rosplan_image }}
