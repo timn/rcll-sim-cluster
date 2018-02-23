@@ -46,6 +46,7 @@ spec:
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 
     spec:
+      serviceAccount: mongodb
       terminationGracePeriodSeconds: 10
       containers:
         - name: mongodb
