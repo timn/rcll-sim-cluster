@@ -50,11 +50,13 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
         - name: mongodb
-          image: "mongo:3.4"
+          image: "mongo:3.6"
           command:
             - mongod
             - "--replSet"
             - rs0
+            - "--bind_ip"
+            - 0.0.0.0
             - "--smallfiles"
             - "--noprealloc"
           ports:
