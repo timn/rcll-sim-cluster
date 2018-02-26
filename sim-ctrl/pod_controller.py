@@ -17,11 +17,16 @@ class PodController(object):
 		self.kube_config = kubernetes.config.load_incluster_config()
 		self.core_api = kubernetes.client.CoreV1Api()
 		self.beta1_api = kubernetes.client.ExtensionsV1beta1Api()
-		self.namespaces = {}
-		self.pods = {}
-		self.services = {}
-		self.ingress = {}
-		self.config_maps = {}
+		self.rbac_api = kubernetes.client.RbacAuthorizationV1beta1Api()
+		self.resources = {
+			"pods": {},
+			"services": {},
+			"ingress": {},
+			"config_maps": {},
+			"roles": {},
+			"role_bindings": {},
+			"service_accounts": {},
+		}
 
 		self.jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(config.template_path),
 										autoescape=False, extensions=['jinja2.ext.with_'])
@@ -100,6 +105,24 @@ class PodController(object):
 					raise
 				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
 
+			elif manifest["kind"] == "Role":
+				print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
+				try:
+					self.create_role(manifest)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
+				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
+
+			elif manifest["kind"] == "RoleBinding":
+				print("    - %s: %s" % (manifest["kind"], manifest["metadata"]["name"]))
+				try:
+					self.create_role_binding(manifest)
+				except:
+					print("Inflicting YAML doc:\n%s" % yamldoc)
+					raise
+				rv.append((manifest["kind"], manifest["metadata"]["name"], manifest))
+
 			else:
 				raise ValueError("Unsupported manifest kind '%s'" % manifest["kind"])
 
@@ -110,7 +133,7 @@ class PodController(object):
 		try:
 			res = self.core_api.create_namespaced_pod(namespace=manifest["metadata"]["namespace"],
 													  body=manifest)
-			self.pods[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+			self.resources["pods"][(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
 				{ "phase": "Requested",
 				  "status": "Requested",
 				  "manifest": manifest,
@@ -127,7 +150,7 @@ class PodController(object):
 		try:
 			res = self.core_api.create_namespaced_service(namespace=manifest["metadata"]["namespace"],
 														  body=manifest)
-			self.services[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+			self.resources["services"][(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
 				{ "phase": "Requested", "manifest": manifest }
 		except ApiException as e:
 			print("Failed to create service %s/%s: '%s'" % (manifest["metadata"]["namespace"],
@@ -138,7 +161,7 @@ class PodController(object):
 		try:
 			res = self.beta1_api.create_namespaced_ingress(namespace=manifest["metadata"]["namespace"],
 			                                               body=manifest)
-			self.ingress[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+			self.resources["ingress"][(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
 				{ "phase": "Requested", "manifest": manifest }
 		except ApiException as e:
 			print("Failed to create ingress %s/%s: '%s'" % (manifest["metadata"]["namespace"],
@@ -149,19 +172,52 @@ class PodController(object):
 		try:
 			res = self.core_api.create_namespaced_config_map(namespace=manifest["metadata"]["namespace"],
 			                                                 body=manifest)
-			self.config_maps[(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+			self.resources["config_maps"][(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
 				{ "phase": "Requested", "manifest": manifest }
 		except ApiException as e:
 			print("Failed to create config map %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 			                                                   manifest["metadata"]["name"], e))
 			raise e
 
+	def create_role(self, manifest):
+		try:
+			res = self.rbac_api.create_namespaced_role(namespace=manifest["metadata"]["namespace"],
+			                                           body=manifest)
+			self.resources["roles"][(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+				{ "phase": "Requested", "manifest": manifest }
+		except ApiException as e:
+			print("Failed to create role %s/%s: '%s'" % (manifest["metadata"]["namespace"],
+			                                             manifest["metadata"]["name"], e))
+			raise e
+
+	def create_role_binding(self, manifest):
+		try:
+			res = self.rbac_api.create_namespaced_role_binding(namespace=manifest["metadata"]["namespace"],
+			                                                   body=manifest)
+			self.resources["role_bindings"][(manifest["metadata"]["namespace"], manifest["metadata"]["name"])] = \
+				{ "phase": "Requested", "manifest": manifest }
+		except ApiException as e:
+			print("Failed to create role binding %s/%s: '%s'" % (manifest["metadata"]["namespace"],
+			                                                     manifest["metadata"]["name"], e))
+			raise e
+
+	def create_service_account(self, manifest):
+		try:
+			res = self.core_api.create_namespaced_service_account(namespace=manifest["metadata"]["namespace"],
+			                                                      body=manifest)
+			self.resources["service_accounts"][(manifest["metadata"]["namespace"],
+			                                    manifest["metadata"]["name"])] = \
+				{ "phase": "Requested", "manifest": manifest }
+		except ApiException as e:
+			print("Failed to create service account %s/%s: '%s'" % (manifest["metadata"]["namespace"],
+			                                                        manifest["metadata"]["name"], e))
+			raise e
 
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
 		start_time = datetime.now()
 		print("Deleting items")
-		for uid in self.pods:
+		for uid in self.resources["pods"]:
 			print("  - Pod %s:%s" % uid)
 			try:
 				res = self.core_api.delete_namespaced_pod(namespace = uid[0],
@@ -170,7 +226,7 @@ class PodController(object):
 			except:
 				print("    (issue cleaning up, ignored)")
 
-		for uid in self.services:
+		for uid in self.resources["services"]:
 			print("  - Service %s:%s" % uid)
 			try:
 				res = self.core_api.delete_namespaced_service(namespace = uid[0], name = uid[1])
@@ -178,16 +234,16 @@ class PodController(object):
 				print("    (issue cleaning up, ignored)")
 
 
-		for uid in self.ingress:
+		for uid in self.resources["ingress"]:
 			print("  - Ingress %s:%s" % uid)
 			try:
 				res = self.beta1_api.delete_namespaced_ingress(namespace = uid[0], name = uid[1],
 				                                               body = V1DeleteOptions())
 			except:
 				print("    (issue cleaning up, ignored)")
-		self.ingress = {}
+		self.resources["ingress"] = {}
 
-		for uid in self.config_maps:
+		for uid in self.resources["config_maps"]:
 			print("  - ConfigMap %s:%s" % uid)
 			try:
 				res = self.core_api.delete_namespaced_config_map(namespace = uid[0],
@@ -195,68 +251,94 @@ class PodController(object):
 				                                                 body = V1DeleteOptions())
 			except:
 				print("    (issue cleaning up, ignored)")
-		self.config_maps = {}
+		self.resources["config_maps"] = {}
 
+		for uid in self.resources["role_bindings"]:
+			print("  - RoleBinding %s:%s" % uid)
 			try:
+				res = self.rbac_api.delete_namespaced_role_binding(namespace = uid[0],
+				                                                   name = uid[1],
+				                                                   body = V1DeleteOptions())
 			except:
 				print("    (issue cleaning up, ignored)")
+		self.resources["role_bindings"] = {}
+
+		for uid in self.resources["roles"]:
+			print("  - Role %s:%s" % uid)
+			try:
+				res = self.rbac_api.delete_namespaced_role(namespace = uid[0],
+				                                           name = uid[1],
+				                                           body = V1DeleteOptions())
+			except:
+				print("    (issue cleaning up, ignored)")
+		self.resources["roles"] = {}
+
+		for uid in self.resources["service_accounts"]:
+			print("  - ServiceAccount %s:%s" % uid)
+			try:
+				res = self.rbac_api.delete_namespaced_service_account(namespace = uid[0],
+				                                                      name = uid[1],
+				                                                      body = V1DeleteOptions())
+			except:
+				print("    (issue cleaning up, ignored)")
+		self.resources["service_accounts"] = {}
 
 		# Not checking for possibly deleted pods, pods take a while to
 		# delete and they will not be listed anymore
 
 		print("Waiting for pod and service deletion")
-		#print("Waiting for pods to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
-		while self.pods:
+		#print("Waiting for pods to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.resources["pods"]]))
+		while self.resources["pods"]:
 			current_pods = [(i.metadata.namespace, i.metadata.name)
 			                for i in self.core_api.list_namespaced_pod(self.namespace).items]
 			#print("Current pods: %s" % ', '.join(["%s:%s" % uid for uid in current_pods]))
-			deleted_pods = [uid for uid in self.pods if uid not in current_pods]
+			deleted_pods = [uid for uid in self.resources["pods"] if uid not in current_pods]
 			#print("Deleted pods: %s" % ', '.join(["%s:%s" % uid for uid in deleted_pods]))
 			for uid in deleted_pods:
 				print("  - Pod %s:%s*" % uid)
-				del self.pods[uid]
-			if not self.pods: break
+				del self.resources["pods"][uid]
+			if not self.resources["pods"]: break
 
-			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
+			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.resources["pods"]]))
 			w = Watch()
 			for event in w.stream(self.core_api.list_namespaced_pod, self.namespace,
 			                      timeout_seconds=30):
 				object = event['object']
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
-				if etype == "DELETED" and uid in self.pods:
+				if etype == "DELETED" and uid in self.resources["pods"]:
 					print("  - Pod %s:%s" % uid)
-					del self.pods[uid]
-					if not self.pods: w.stop()
+					del self.resources["pods"][uid]
+					if not self.resources["pods"]: w.stop()
 		#print("Done deleting pods")
 
-		#print("Waiting for services to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
-		while self.services:
+		#print("Waiting for services to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.resources["services"]]))
+		while self.resources["services"]:
 			current_services = [(i.metadata.namespace, i.metadata.name)
 			                    for i in self.core_api.list_namespaced_service(self.namespace).items]
 			#print("Current services: %s" % ', '.join(["%s:%s" % uid for uid in current_services]))
-			deleted_services = [uid for uid in self.services if uid not in current_services]
+			deleted_services = [uid for uid in self.resources["services"] if uid not in current_services]
 			#print("Deleted services: %s" % ', '.join(["%s:%s" % uid for uid in deleted_services]))
 			for uid in deleted_services:
 				print("  - Service %s:%s*" % uid)
-				del self.services[uid]
-			if not self.services: break
+				del self.resources["services"][uid]
+			if not self.resources["services"]: break
 
 			# There is a short gap here that could trigger a race condition
 			# but there seems to be no "query and keep watching" API that could
 			# prevent that.
 
-			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
+			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.resources["services"]]))
 			w = Watch()
 			for event in w.stream(self.core_api.list_namespaced_service, self.namespace,
 			                      timeout_seconds=30):
 				object = event['object']
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
-				if etype == "DELETED" and uid in self.services:
+				if etype == "DELETED" and uid in self.resources["services"]:
 					print("  - Service %s:%s" % uid)
-					del self.services[uid]
-					if not self.services: w.stop()
+					del self.resources["services"][uid]
+					if not self.resources["services"]: w.stop()
 		#print("Done deleting services")
 
 		all_deleted_time = datetime.now()
@@ -267,14 +349,14 @@ class PodController(object):
 		# are finished looking
 		printed_all_up=False
 		start_time = datetime.now()
-		while self.pods:
+		while self.resources["pods"]:
 			try:
 				w = Watch()
 				for event in w.stream(self.core_api.list_namespaced_pod, self.namespace):
 					object = event['object']
 					etype = event['type']
 					uid = (object.metadata.namespace, object.metadata.name)
-					if uid in self.pods:
+					if uid in self.resources["pods"]:
 						if etype == "MODIFIED":
 
 							#print("************************************\n%s %s\n%s" \
@@ -343,10 +425,10 @@ class PodController(object):
 							print(" - %-24s %-18s %d/%d  %s" \
 								  % (object.metadata.name, status, ready, total, pod_name_ip))
 
-							self.pods[uid]["phase"] = object.status.phase
-							self.pods[uid]["status"] = status
-							self.pods[uid]["ready"] = ready
-							self.pods[uid]["total"] = total
+							self.resources["pods"][uid]["phase"] = object.status.phase
+							self.resources["pods"][uid]["status"] = status
+							self.resources["pods"][uid]["ready"] = ready
+							self.resources["pods"][uid]["total"] = total
 							if ((object.status.phase == "Succeeded" or object.status.phase == "Failed")
 								and object.metadata.deletion_timestamp == None):
 
@@ -366,21 +448,21 @@ class PodController(object):
 										return False
 
 									# If a sufficient container completed, assume overall completion
-									elif c.name in self.pods[uid]["sufficient_containers"]:
+									elif c.name in self.resources["pods"][uid]["sufficient_containers"]:
 										print("Container '%s' of pod '%s:%s' succeeded, finishing"
 											  % (c.name, uid[0], uid[1]))
 										return True
 
 						if etype == "DELETED":
 							print("Pod %s/%s has been deleted" % (object.metadata.namespace, object.metadata.name))
-							del self.pods[uid]
-							if not self.pods:
+							del self.resources["pods"][uid]
+							if not self.resources["pods"]:
 								w.stop()
 								print("Done watching events")
 
 					if not printed_all_up:
 						all_up = True
-						for k, p in self.pods.items():
+						for k, p in self.resources["pods"].items():
 							if p["status"] != "Running":
 								all_up = False
 							if p["ready"] != p["total"]:
