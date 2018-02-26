@@ -215,7 +215,9 @@ class SimController(object):
 				print("Running job %s in namespace %s" % (job["name"], self.job_namespace))
 				start_time = datetime.now()
 				manifests=[]
-				num_items = { "YAML": 0, "Pod": 0, "Container": 0, "Service": 0, "Ingress": 0, "ConfigMap": 0 }
+				num_items = { "YAML": 0, "Pod": 0, "Container": 0,
+				              "Service": 0, "Ingress": 0, "ConfigMap": 0,
+							  "Role": 0, "RoleBinding": 0, "ServiceAccount": 0}
 				for i in job["params"]["template_parameters"]:
 					i["vars"]["namespace"] = self.job_namespace
 					i["vars"]["job_name"] = job["name"]
