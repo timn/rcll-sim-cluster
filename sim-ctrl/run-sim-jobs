@@ -44,8 +44,6 @@ class SimController(object):
 		                    replicaset=self.config.mongodb_rs,
 		                    collection=self.config.mongodb_queue_col)
 
-		self.podctrl = PodController(self.config)
-
 		signal.signal(signal.SIGTERM, self.term_handler)
 
 	def __enter__(self):
@@ -58,13 +56,15 @@ class SimController(object):
 			self.job_namespace = self.generate_namespace_name(name_prefix)
 		if self.pod_name is not None:
 			self.set_pod_label('job-namespace', self.job_namespace)
+		self.job_namespace_created = False
 		if self.job_namespace != "default":
-			self.create_namespace()
+			self.job_namespace_created = self.create_namespace()
+		self.podctrl = PodController(self.config, namespace=self.job_namespace)
 		self.initialized = True
 		return self
 
 	def __exit__(self, exc_type, exc_value, traceback):
-		if self.job_namespace != "default":
+		if self.job_namespace_created:
 			self.delete_namespace()
 		if self.pod_name is not None:
 			self.set_pod_label('job-namespace', None)
@@ -126,39 +126,26 @@ class SimController(object):
 		core_api = kubernetes.client.CoreV1Api()
 
 		# Assume that the namespace may exist.
-		# If so, delete it. Watch to wait for deletion. Due to a race between
-		# deleting and watching, we need to wrap in the "may exist" loop.
-		# We must actually watch, since deletion can take some time as it
-		# potentially involves deleting existing workloads.
-		namespace_may_exist = True
-		deletion_requested = False
-		while namespace_may_exist:
-			existing_namespaces = core_api.list_namespace()
-			namespace_may_exist = False
-			for n in existing_namespaces.items:
-				if n.metadata.name == self.job_namespace:
-					namespace_may_exist = True
-					if not deletion_requested:
-						print("  - requesting deletion since it already exists")
-						core_api.delete_namespace(name=self.job_namespace, body = V1DeleteOptions())
-						deletion_requested = True
-					print("  - waiting for deletion")
-					w = Watch()
-					for event in w.stream(core_api.list_namespace, timeout_seconds=30):
-						if event['type'] == "DELETED" and event['object'].metadata.name == self.job_namespace:
-							namespace_may_exist = False
-							w.stop()
-					break
-			if deletion_requested and not namespace_may_exist:
-				print("  - namespace deleted, now requesting creation")
+		# If it exists, just use it, otherwise, create it.
+		exists = False
+		existing_namespaces = core_api.list_namespace()
+		for n in existing_namespaces.items:
+			if n.metadata.name == self.job_namespace:
+				exists = True
+				print("  - using existing namespace")
 
-		manifest = {"kind": "Namespace", "apiVersion": "v1", "metadata": { "name": self.job_namespace } }
-		core_api.create_namespace(manifest)
+		if not exists:
+			manifest = {"kind": "Namespace", "apiVersion": "v1",
+			            "metadata": { "name": self.job_namespace } }
+			core_api.create_namespace(manifest)
+			
 		if "JOB_NAMESPACE_COPY_SECRETS" in os.environ:
 			secrets = os.environ["JOB_NAMESPACE_COPY_SECRETS"].split(' ')
 			for s in secrets:
 				print("  - copying secret '%s' from '%s'" % (s, self.namespace))
 				self.copy_secret(s, self.namespace, self.job_namespace)
+
+		return not exists
 
 	def delete_namespace(self):
 		print("Deleting namespace '%s'" % self.job_namespace)
@@ -180,6 +167,10 @@ class SimController(object):
 			"type": secret.type,
 			"data": dict(secret.data)
 		}
+		try:
+			core_api.delete_namespaced_secret(name, to_namespace, body = V1DeleteOptions())
+		except:
+			pass
 		core_api.create_namespaced_secret(to_namespace, manifest)
 
 
