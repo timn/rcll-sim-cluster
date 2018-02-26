@@ -26,12 +26,12 @@ class PodController(object):
 		self.jinja = jinja2.Environment(loader=jinja2.FileSystemLoader(config.template_path),
 										autoescape=False, extensions=['jinja2.ext.with_'])
 
-	def wait_pod_event(self, namespace, name, cond):
+	def wait_pod_event(self, name, cond):
 		w = Watch()
-		for event in w.stream(self.core_api.list_pod_for_all_namespaces, timeout_seconds=120):
+		for event in w.stream(self.core_api.list_namespaced_pod, self.namespace, timeout_seconds=120):
 			object = event['object']
 			etype = event['type']
-			if object.metadata.namespace != namespace or object.metadata.name != name: continue
+			if object.metadata.name != name: continue
 			if cond(etype, object):
 				w.stop()
 
@@ -255,7 +255,7 @@ class PodController(object):
 		#print("Waiting for pods to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
 		while self.pods:
 			current_pods = [(i.metadata.namespace, i.metadata.name)
-			                for i in self.core_api.list_pod_for_all_namespaces().items]
+			                for i in self.core_api.list_namespaced_pod(self.namespace).items]
 			#print("Current pods: %s" % ', '.join(["%s:%s" % uid for uid in current_pods]))
 			deleted_pods = [uid for uid in self.pods if uid not in current_pods]
 			#print("Deleted pods: %s" % ', '.join(["%s:%s" % uid for uid in deleted_pods]))
@@ -266,7 +266,8 @@ class PodController(object):
 
 			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.pods]))
 			w = Watch()
-			for event in w.stream(self.core_api.list_pod_for_all_namespaces, timeout_seconds=30):
+			for event in w.stream(self.core_api.list_namespaced_pod, self.namespace,
+			                      timeout_seconds=30):
 				object = event['object']
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
@@ -279,7 +280,7 @@ class PodController(object):
 		#print("Waiting for services to be deleted: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
 		while self.services:
 			current_services = [(i.metadata.namespace, i.metadata.name)
-			                    for i in self.core_api.list_service_for_all_namespaces().items]
+			                    for i in self.core_api.list_namespaced_service(self.namespace).items]
 			#print("Current services: %s" % ', '.join(["%s:%s" % uid for uid in current_services]))
 			deleted_services = [uid for uid in self.services if uid not in current_services]
 			#print("Deleted services: %s" % ', '.join(["%s:%s" % uid for uid in deleted_services]))
@@ -294,7 +295,8 @@ class PodController(object):
 
 			#print("Remaining: %s" % ', '.join(["%s:%s" % uid for uid in self.services]))
 			w = Watch()
-			for event in w.stream(self.core_api.list_service_for_all_namespaces, timeout_seconds=30):
+			for event in w.stream(self.core_api.list_namespaced_service, self.namespace,
+			                      timeout_seconds=30):
 				object = event['object']
 				etype = event['type']
 				uid = (object.metadata.namespace, object.metadata.name)
@@ -315,7 +317,7 @@ class PodController(object):
 		while self.pods:
 			try:
 				w = Watch()
-				for event in w.stream(self.core_api.list_pod_for_all_namespaces):
+				for event in w.stream(self.core_api.list_namespaced_pod, self.namespace):
 					object = event['object']
 					etype = event['type']
 					uid = (object.metadata.namespace, object.metadata.name)
