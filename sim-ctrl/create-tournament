@@ -56,7 +56,8 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Tournament')
 	parser.add_argument('--name', metavar='T-NAME', required=True,
 	                    help='Name of simulation tournament')
-	parser.add_argument('--template', metavar='FILENAME', required=True,
+	parser.add_argument('--template', metavar='FILENAME',
+	                    default="/opt/rcll-sim-ctrl/templates/game.yaml.j2",
 	                    help='Template file for job parameters.')
 	parser.add_argument('--iterations', metavar='N', type=int, default=1,
 	                    help='Number of iterations to play (default 1)')

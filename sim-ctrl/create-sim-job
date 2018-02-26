@@ -14,7 +14,8 @@ if __name__ == '__main__':
 	                    help='Name of cyan team')
 	parser.add_argument('--team-magenta', metavar='NAME', default="none",
 	                    help='Name of magenta')
-	parser.add_argument('--template', metavar='FILENAME', required=True,
+	parser.add_argument('--template', metavar='FILENAME',
+	                    default="/opt/rcll-sim-ctrl/templates/game.yaml.j2",
 	                    help='Template file for job parameters.')
 	parser.add_argument('--debug', dest='debug', action='store_true',
 	                    help='Template file for job parameters.')
