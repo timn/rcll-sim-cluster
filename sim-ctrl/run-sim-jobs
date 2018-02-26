@@ -219,6 +219,7 @@ class SimController(object):
 				              "Service": 0, "Ingress": 0, "ConfigMap": 0,
 							  "Role": 0, "RoleBinding": 0, "ServiceAccount": 0}
 				for i in job["params"]["template_parameters"]:
+					if not "vars" in i: i["vars"] = {}
 					i["vars"]["namespace"] = self.job_namespace
 					i["vars"]["job_name"] = job["name"]
 					print("  - template: %s" % i["template"])
