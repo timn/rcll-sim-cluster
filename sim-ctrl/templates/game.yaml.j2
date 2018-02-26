@@ -10,6 +10,7 @@
 {% endmacro -%}
 
 {% set docker_registry = "registry.kbsg.rwth-aachen.de/" -%}
+{% set use_rbac = True -%}
 
 {# Import team-specific configurations #}
 {% import "team-" + team_name_cyan + ".j2" as team_cyan with context -%}
@@ -21,7 +22,9 @@ metadata:
 ---
 parameters:
 ### Common simulation base pods
+{% if use_rbac -%}
 - template: rbac
+{% endif %}
 {% block sim_pod -%}
 - template: sim-refbox
   vars:
