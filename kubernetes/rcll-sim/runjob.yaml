@@ -3,6 +3,8 @@ kind: Job
 metadata:
   name: run-sim-jobs
 spec:
+  # Note that cluster with RBAC enabled requires appropriate cluster
+  # role and bindings (cf. rbac.yaml). Default is to enable to up 2.
   parallelism: 2
   template:
     metadata:
@@ -12,6 +14,7 @@ spec:
         scheduler.alpha.kubernetes.io/tolerations: '[{"key":"exclusive", "operator":"Equal", "value":"rcll-sim"}]'
 
     spec:
+      serviceAccount: rcll-sim-runner
       containers:
       - name: run-sim-jobs
         image: registry.kbsg.rwth-aachen.de/timn/rcll-sim-ctrl:latest
