@@ -12,7 +12,8 @@ from datetime import datetime, timedelta
 import traceback
 
 class PodController(object):
-	def __init__(self, config):
+	def __init__(self, config, namespace="default"):
+		self.namespace = namespace
 		self.kube_config = kubernetes.config.load_incluster_config()
 		self.core_api = kubernetes.client.CoreV1Api()
 		self.beta1_api = kubernetes.client.ExtensionsV1beta1Api()
