@@ -1,0 +1,9 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: rcll-sim-0
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: rcll-sim-1

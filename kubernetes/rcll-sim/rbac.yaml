@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rcll-sim-runner
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: rcll-sim-runner-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list", "get", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: rcll-sim-runner-cluster-binding
+subjects:
+  - kind: ServiceAccount
+    name: rcll-sim-runner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: rcll-sim-runner-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: rcll-sim-runner-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["ceph-client-key", "regsecret"]
+    verbs: ["get"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: rcll-sim-runner-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rcll-sim-runner-role
+subjects:
+- kind: ServiceAccount
+  name: rcll-sim-runner
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: rcll-sim-runner-binding
+  namespace: rcll-sim-0
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: rcll-sim-runner
+  namespace: default
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: rcll-sim-runner-binding
+  namespace: rcll-sim-1
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: rcll-sim-runner
+  namespace: default
