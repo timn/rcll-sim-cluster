@@ -89,10 +89,27 @@ spec:
       imagePullPolicy: Always
       command: ["/opt/rcll-sim/run-component"]
       args: ["gazebo"]
-{% if gazebo_world %}
       env:
+      - name: KUBE_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: JOB_NAME
+        value: {{ job_name }}
+{% if gazebo_world %}
       - name: GAZEBO_WORLD
         value: {{ gazebo_world }}
+{% elif gazebo %}
+{%   if gazebo.world %}
+      - name: GAZEBO_WORLD
+        value: {{ gazebo.world }}
+{%   endif %}
+{%   if gazebo.record %}
+      - name: GAZEBO_RECORD
+        value: "true"
+      - name: GAZEBO_RECORD_PATH
+        value: /data/gazebo-recordings
+{%   endif %}
 {% endif %}
       readinessProbe:
         exec:
@@ -106,6 +123,12 @@ spec:
         limits:
           memory: "1.5Gi"
           cpu: "1"
+{%- if gazebo and gazebo.record %}
+      volumeMounts:
+        - name: gazebo-record-dir
+          mountPath: /data/gazebo-recordings
+{%- endif %}
+
 {%- if refbox.enable_mongodb %}
     - name: mongodb-refbox
       image: mongo:3.4
@@ -225,7 +248,18 @@ spec:
         secretRef:
           name: ceph-client-key
         # Note that the path must already exist in cephfs
-        path: /refbox-db-export/
+        path: /rcll-sim/refbox-db-export/
+{%- if gazebo and gazebo.record %}
+    - name: gazebo-record-dir
+      cephfs:
+        monitors:
+        - ceph-mon.ceph.svc.cluster.local
+        user: admin
+        secretRef:
+          name: ceph-client-key
+        # Note that the path must already exist in cephfs
+        path: /rcll-sim/gazebo-recordings/
+{%- endif %}
     - name: mongodb-refbox-storage
       emptyDir: {}
 
