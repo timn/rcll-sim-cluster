@@ -34,6 +34,12 @@ rules:
     resources: ["secrets"]
     resourceNames: ["ceph-client-key", "regsecret"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "get", "patch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
