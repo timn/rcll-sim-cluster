@@ -240,7 +240,8 @@ class SimController(object):
 				self.wq.update_item(job["name"], update)
 
 				format_string="Running {Pod} pods, {Container} cont, {Service} svc, " \
-				               + "{Ingress} ing, {ConfigMap} cm"
+				               + "{Ingress} ing, {ConfigMap} cm, {Role} rl, {RoleBinding} rb, " \
+				               + "{ServiceAccount} sa"
 				print(format_string.format(**num_items))
 
 				print("Monitoring pods")
