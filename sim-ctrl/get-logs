@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+
+import kubernetes
+import argparse
+import requests
+import gzip
+import sys
+import time
+import humanize
+
+PROGRESS_BAR_WIDTH = 25
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='Print job info')
+	parser.add_argument('--namespace', default="default",
+	                    help='Namespace of pod (defaults to "default").')
+	parser.add_argument('--progress', action="store_true",
+	                    help='Show progress bar during download')
+	parser.add_argument('-o', '--output', default=None,
+	                    help='Output file (default: <PODNAME>.log.gz).')
+	parser.add_argument('podname', metavar="PODNAME", nargs=1,
+	                    help='Name of pod to retrieve log for')
+	args = parser.parse_args()
+
+	if args.progress and args.output == "-":
+		print("Progress bar cannot be enabled when output is stdout")
+		exit(1)
+
+	kubernetes.config.load_incluster_config()
+	kube_config = kubernetes.client.configuration
+
+	url = "%s/api/v1/namespaces/%s/pods/%s/log" % (kube_config.host,
+                                                       args.namespace,
+                                                       args.podname[0])
+
+	print("URL: %s\n" % url)
+
+	headers = {"Authorization": kube_config.get_api_key_with_prefix('authorization')}
+	params = {"timestamps": True}
+
+	f = None
+	if args.output == "-":
+		f = sys.stdout.buffer
+	elif args.output is None:
+		output_filename = "%s.log.gz" % args.podname[0]
+		f = gzip.open(output_filename, 'wb')
+	else:
+		output_filename = args.output
+		f = gzip.open(output_filename, 'wb')
+
+	if not f:
+		print("Failed to open file %s" % output_filename)
+		exit(10)
+
+	r = requests.get(url, stream=True, headers=headers, params=params,
+	                 verify=kube_config.ssl_ca_cert)
+	
+	with f:
+		dl = 0
+		last_done = 0
+		total_length = int(r.headers.get('content-length'))
+		for chunk in r.iter_content(chunk_size=16):
+			if chunk: # filter out keep-alive new chunks
+				dl += len(chunk)
+				f.write(chunk)
+				time.sleep(.5)
+
+				if args.progress:
+					done = int(PROGRESS_BAR_WIDTH * dl / total_length)
+					if done > last_done:
+						sys.stdout.write("\r[%s%s] %10s / %-10s" %
+						                 ('=' * done, ' ' * (PROGRESS_BAR_WIDTH-done),
+						                  humanize.naturalsize(dl, binary=True),
+						                  humanize.naturalsize(total_length, binary=True)))
+						last_done = done
+
+	if args.progress:
+		print("")
