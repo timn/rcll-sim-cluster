@@ -18,7 +18,8 @@ from kubernetes.client import V1DeleteOptions
 from kubernetes.watch import Watch
 
 class SimController(object):
-	def __init__(self, include_recently_failed=False, job_namespace=None, tournament=None, run_at_most=0):
+	def __init__(self, include_recently_failed=False, job_namespace=None, tournament=None, run_at_most=0,
+				 retain_logs=False, logs_basedir=None):
 		self.config	= Configuration()
 		self.include_recently_failed = include_recently_failed
 		if 'POD_NAME' in os.environ:
@@ -28,6 +29,8 @@ class SimController(object):
 		self.namespace = self.config.kube_namespace
 		self.job_namespace = job_namespace or self.config.kube_namespace
 		self.run_at_most = run_at_most
+		self.retain_logs = retain_logs
+		self.logs_basedir = logs_basedir
 		self.quit = False
 
 		self.tournament_regex = None
@@ -253,6 +256,20 @@ class SimController(object):
 				print("Job %s failed, reqeueing" % job["name"])
 				self.wq.requeue_item(job["name"])
 
+			if self.retain_logs:
+				# Store logs
+				log_time_start = datetime.now()
+				time_str = log_time_start.strftime("%Y%m%d-%H%M")
+				job_str = job["name"].replace(":", "_")
+				output_dir = os.path.normpath(os.path.join(self.logs_basedir, "%s-%s" % (job_str, time_str)))
+				try:
+					os.makedirs(output_dir)
+					self.podctrl.download_all_pod_logs(output_dir, progress=False)
+				except:
+					print("Failed to download logs for %s (%s)" % (job["name"], str(sys.exc_info()[1])))
+				log_time_end = datetime.now()
+				print("Log download finished (took %s)\n" % str(log_time_end-log_time_start))
+
 			# Cleanup removing pods, services
 			self.podctrl.delete_all()
 			end_time = datetime.now()
@@ -273,6 +290,10 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Run RCLL Cluster Sim Jobs')
 	parser.add_argument('--include-recently-failed', action='store_true',
 	                    help='Allow execution of recently failed jobs.')
+	parser.add_argument('--retain-logs', action='store_true',
+	                    help='Enable retaining log files')
+	parser.add_argument('--logs-basedir',
+	                    help='Base directory where to store retained logs.')
 	parser.add_argument('--namespace',
 	                    help='Namespace for created pods.')
 	parser.add_argument('--tournament',
@@ -299,6 +320,26 @@ if __name__ == '__main__':
 	if args.run_at_most:
 		run_at_most = args.run_at_most
 
+	retain_logs = False
+	if "RETAIN_LOGS" in os.environ:
+		retain_logs = bool(os.environ["RETAIN_LOGS"] not in ["false", "no"])
+	if args.retain_logs:
+		retain_logs = args.retain_logs
+
+	logs_basedir = ""
+	if "LOGS_BASEDIR" in os.environ:
+		logs_basedir = os.environ["LOGS_BASEDIR"]
+	if args.logs_basedir:
+		logs_basedir = args.logs_basedir
+
+	if retain_logs:
+		if logs_basedir == "":
+			raise Exception("Logs basedir must be set if retaining losg is enabled")
+		if not os.path.isdir(logs_basedir):
+			raise Exception("Logs basedir is not a directory")
+		if not os.access(logs_basedir, os.W_OK):
+			raise Exception("Cannot write to logs basedir")
+
 	include_recently_failed = False
 	if "RUN_ALSO_RECENTLY_FAILED" in os.environ \
 	and os.environ["RUN_ALSO_RECENTLY_FAILED"].lower() == "true":
@@ -306,7 +347,10 @@ if __name__ == '__main__':
 	if args.include_recently_failed:
 		include_recently_failed = True
 
-	with SimController(include_recently_failed, job_namespace, tournament=tournament, run_at_most=run_at_most) as sim_ctrl:
+	with SimController(include_recently_failed, job_namespace,
+	                   tournament=tournament, run_at_most=run_at_most,
+					   retain_logs=retain_logs, logs_basedir=logs_basedir) \
+	as sim_ctrl:
 		try:
 			sim_ctrl.run()
 		except Exception as e:
