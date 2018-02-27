@@ -10,11 +10,19 @@ import yaml
 import json
 from datetime import datetime, timedelta
 import traceback
+import requests
+import gzip
+import sys
+import os
+import humanize
+
+PROGRESS_BAR_WIDTH = 25
 
 class PodController(object):
 	def __init__(self, config, namespace="default"):
 		self.namespace = namespace
-		self.kube_config = kubernetes.config.load_incluster_config()
+		kubernetes.config.load_incluster_config()
+		self.kube_config = kubernetes.client.configuration
 		self.core_api = kubernetes.client.CoreV1Api()
 		self.beta1_api = kubernetes.client.ExtensionsV1beta1Api()
 		self.rbac_api = kubernetes.client.RbacAuthorizationV1beta1Api()
@@ -212,6 +220,86 @@ class PodController(object):
 			print("Failed to create service account %s/%s: '%s'" % (manifest["metadata"]["namespace"],
 			                                                        manifest["metadata"]["name"], e))
 			raise e
+
+	def download_all_pod_logs(self, output_dir, progress=True, compress=True):
+
+		# K8s API Server compression is an alpha feature as of 1.9 and disabled by default
+		# (feature gate APIResponseCompression). Therefore, requesting compression is not
+		# enabled here but we rather compress ourselves. Can be added later.
+
+		headers = {"Authorization": self.kube_config.get_api_key_with_prefix('authorization')}
+		params = {"timestamps": True}
+
+		print("Downloading pod logs")
+		for uid in self.resources["pods"]:
+			namespace = uid[0]
+			pod_name  = uid[1]
+
+			pod = self.core_api.read_namespaced_pod(pod_name, namespace)
+			if not pod:
+				print("Failed to get info for pod %s:%s" % uid)
+				continue
+
+			containers = [c.name for c in pod.spec.containers]
+			print("  - Pod %s:%s %s" % (namespace, pod_name, str(containers)))
+
+			output_poddir   = "%s/%s" % (output_dir, pod_name)
+			os.makedirs(output_poddir)
+
+			for container in containers:
+				output_filename = "%s/%s.log.gz" % (output_poddir, container)
+
+				url = "%s/api/v1/namespaces/%s/pods/%s/log" % \
+				      (self.kube_config.host, namespace, pod_name)
+
+				#print("URL: %s" % url)
+				#print("Output: %s" % output_filename)
+
+				headers = {"Authorization": self.kube_config.get_api_key_with_prefix('authorization')}
+				params = {"container": container, "timestamps": True}
+
+				r = requests.get(url, stream=True, headers=headers, params=params,
+				                 verify=self.kube_config.ssl_ca_cert)
+
+				with gzip.open(output_filename, 'wb') as f:
+					dl_progress = progress
+					dl = 0
+					last_done = 0
+					total_length = 0
+					cl = r.headers.get('content-length')
+					if cl is not None:
+						total_length = int(cl)
+					else:
+						dl_progress = False
+
+					if progress and not dl_progress:
+						sys.stdout.write("    - container %-30s (chunked response)" % container)
+						sys.stdout.flush()
+					else:
+						sys.stdout.write("    - container %-30s" % container)
+						sys.stdout.flush()
+
+					for chunk in r.iter_content(chunk_size=4096):
+						if chunk: # filter out keep-alive new chunks
+							dl += len(chunk)
+							f.write(chunk)
+
+							if dl_progress:
+								done = int(PROGRESS_BAR_WIDTH * dl / total_length)
+								if done > last_done:
+									sys.stdout.write("\r    - %-30s [%s%s] %10s / %-10s" %
+									                 (container,
+									                  '=' * done, ' ' * (PROGRESS_BAR_WIDTH - done),
+									                  humanize.naturalsize(dl, binary=True),
+									                  humanize.naturalsize(total_length, binary=True)))
+									sys.stdout.flush()
+									last_done = done
+
+					if dl_progress:
+						sys.stdout.write("\n")
+					else:
+						sys.stdout.write("\r    - %-30s %27s %23s\n" %
+						                 (container, "", humanize.naturalsize(dl, binary=True)))
 
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
