@@ -251,6 +251,11 @@ class SimController(object):
 				else:
 					print("Job %s failed, reqeueing" % job["name"])
 					self.wq.requeue_item(job["name"])
+
+			except KeyboardInterrupt:
+				print("Job %s interrupted manually, reqeueing" % job["name"])
+				self.wq.requeue_item(job["name"])
+
 			except:
 				print("*** EXCEPTION ***")
 				print_exc()
