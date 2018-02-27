@@ -43,6 +43,15 @@ spec:
         #- name: RUN_AT_MOST
         #  value: "1"
 
+        # Retain log files?
+        # If enabled, logs will be retrieved when a game finishes
+        # (successful or not). Make sure to setup the appropriate
+        # volume and volume mount below.
+        - name: RETAIN_LOGS
+          value: "yes"
+        - name: LOGS_BASEDIR
+          value: /data/logs
+
         # This is the namespace in which the per-job pods run, i.e., the
         # pods that make up the simulation. Setting it to auto (required
         # if spec.parallelism > 1) will cause the creation of new per-job-pod
@@ -70,6 +79,21 @@ spec:
         # Combined with stdbuf in command causes timely log messages
         - name: PYTHONUNBUFFERED
           value: "true"
+
+        volumeMounts:
+          - name: logs-basedir
+            mountPath: /data/logs
+
+      volumes:
+      - name: logs-basedir
+        cephfs:
+          monitors:
+          - ceph-mon.ceph.svc.cluster.local
+          user: admin
+          secretRef:
+            name: ceph-client-key
+          # Note that the path must already exist in cephfs
+          path: /rcll-sim/logs/
 
       terminationGracePeriodSeconds: 180
       imagePullSecrets:
