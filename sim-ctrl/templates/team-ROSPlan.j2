@@ -1,5 +1,5 @@
 {% set num_robots =      1 %}
-{% set robot_pod_image = "timn/rcll-sim:2016-f25-kinetic" %}
+{% set robot_pod_image = "timn/rcll-sim:2016-f27-kinetic" %}
 {% set crypto_key =      "randomkey" %}
 
 {% set run_ros_pod = True %}
@@ -13,7 +13,7 @@
 - template: rcll-sim-rosplan
 {% endif %}
   vars:
-    rcll_sim_rosplan_image: {{ docker_registry }}timn/rcll-sim-rosplan:2016-f25-kinetic
+    rcll_sim_rosplan_image: {{ docker_registry }}timn/rcll-sim-rosplan:2016-f27-kinetic
     robots:
 {%- for i in range(1, num_robots+1) %}
       - {{team_color[0]|upper }}-R{{ i }}

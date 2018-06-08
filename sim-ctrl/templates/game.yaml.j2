@@ -28,7 +28,7 @@ parameters:
 {% block sim_pod -%}
 - template: sim-refbox
   vars:
-    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic
+    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f27-kinetic
     robots:
       {{ robots()|indent(6) }}
     team_cyan:

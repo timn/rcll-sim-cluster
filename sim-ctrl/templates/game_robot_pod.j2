@@ -8,8 +8,8 @@
 # Robot pod {{ robot_idx }} for team {{ team_name }} ({{ team_color }})
 - template: {{ team_config.robot_pod_template|default("robot-pod") }}
   vars:
-    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f25-kinetic
-    robot_pod_image: {{ docker_registry }}{{ team_config.robot_pod_image|default("timn/fawkes-robotino:2016-f25-kinetic") }}
+    rcll_sim_image: {{ docker_registry }}timn/rcll-sim:2016-f27-kinetic
+    robot_pod_image: {{ docker_registry }}{{ team_config.robot_pod_image|default("timn/fawkes-robotino:2016-f27-kinetic") }}
     robot:
       pod_name: robot-{{ robot_suffix }}
       service_name: robot-{{ robot_suffix }}
