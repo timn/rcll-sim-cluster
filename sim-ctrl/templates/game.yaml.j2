@@ -50,7 +50,7 @@ parameters:
 {% block gzweb_pod -%}
 - template: gzweb
   vars:
-    gzweb_enable: false
+    gzweb_enable: true
     gzweb_image: {{ docker_registry }}timn/gzweb:7
     # run gzweb only for first namespace atm
     gzweb_namespace: rcll-sim-0
