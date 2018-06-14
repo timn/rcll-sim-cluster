@@ -63,7 +63,7 @@ spec:
       containers:
         - name: ceph-mon
           #image: ceph/daemon:latest
-          image: ceph/daemon:tag-build-master-luminous-centos-7
+          image: ceph/daemon:latest-kraken
           imagePullPolicy: Always
           lifecycle:
             preStop:

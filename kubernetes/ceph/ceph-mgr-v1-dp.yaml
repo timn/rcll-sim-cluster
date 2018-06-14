@@ -64,7 +64,7 @@ spec:
       containers:
         - name: ceph-mgr
           #image: ceph/daemon:latest
-          image: ceph/daemon:tag-build-master-luminous-centos-7
+          image: ceph/daemon:latest-kraken
           imagePullPolicy: Always
           ports:
             - containerPort: 6800

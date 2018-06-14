@@ -39,7 +39,7 @@ spec:
       containers:
         - name: ceph-mds
           #image: ceph/daemon:latest
-          image: ceph/daemon:tag-build-master-luminous-centos-7
+          image: ceph/daemon:latest-kraken
           ports:
             - containerPort: 6800
           env:
