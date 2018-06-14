@@ -4,6 +4,7 @@ set -ex
 ./create_secrets.sh "$@"
 
 kubectl create \
+-f ceph-rbac.yaml \
 -f ceph-mds-v1-dp.yaml \
 -f ceph-mon-v1-svc.yaml \
 -f ceph-mon-v1-dp.yaml \
