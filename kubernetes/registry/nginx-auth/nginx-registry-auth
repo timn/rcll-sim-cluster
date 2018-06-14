@@ -58,7 +58,7 @@ class AuthHandler(BaseHTTPRequestHandler):
 			if version != "v2":
 				return self.send_FAIL("Version mismatch, not a v2 URI")
 
-			if repo == "timn" and method == "GET":
+			if repo in ["thofmann", "timn"] and method == "GET":
 				return self.send_OK()
 			elif user == "cluster" and method == "GET":
 				return self.send_OK()
