@@ -1,4 +1,4 @@
-FROM       fedora:25
+FROM       fedora:27
 
 # Disable Delta RPM, since docs are stripped doesn't work
 RUN echo "deltarpm=0" >> /etc/dnf/dnf.conf && \
