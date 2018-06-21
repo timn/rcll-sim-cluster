@@ -1,0 +1,21 @@
+{% set num_robots =      1 %}
+{% set robot_pod_image = "timn/rcll-sim:2016-f27-kinetic" %}
+{% set crypto_key =      "randomkey" %}
+
+{% set run_ros_pod = True %}
+{% set create_headless_service_for_central_agent = True %}
+
+{% macro pods(team_name, team_color) %}
+- template: rcll-sim-rosplan
+  vars:
+    rcll_sim_rosplan_image: {{ docker_registry }}kcl2018/rcll-sim-rosplan:alpha1
+    robots:
+{%- for i in range(1, num_robots+1) %}
+      - {{team_color[0]|upper }}-R{{ i }}
+{%- endfor %}
+    ros_master_uri: http://rosmaster-{{ team_color|lower }}:11311
+    team:
+      name: {{ team_name }}
+      color: {{ team_color }}
+    autostart_planning: "true"
+{% endmacro %}
