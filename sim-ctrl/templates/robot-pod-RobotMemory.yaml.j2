@@ -1,44 +1,14 @@
 {% extends "robot-pod.yaml.j2" %}
 
-{% block pods %}
----
-# Headless service for distributed MongoDB for RobotMemory
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ robot.pod_name|replace("robot-", "mongodb-") }}-distributed
-  namespace: {{ namespace }}
-spec:
-  selector:
-    robot: {{ robot.name }}
-    team-color: {{ team.color|lower }}
-    database: mongodb
-    replica-set: syncedrobmem
-  clusterIP: None
-  ports:
-  - port: 1
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: {{ robot.pod_name|replace("robot-", "mongodb-") }}-distributed
-  namespace: {{ namespace }}
-  labels:
-    robot: {{ robot.name }}
-    team-color: {{ team.color|lower }}
-    database: mongodb
-    replica-set: syncedrobmem
-spec:
-  tolerations:
-  - key: exclusive
-    value: rcll-sim
-  containers:
-  - name: mongodb-sync
+{% block container_extra %}
+  - name: mongodb-sync-distributed
     image: mongo
     command:
       - mongod
       - "--replSet"
-      - syncedrobmem
+      - robot-memory-distributed
+      - "--bind_ip"
+      - "0.0.0.0"
       - "--smallfiles"
       - "--noprealloc"
       - "--port"
@@ -46,9 +16,9 @@ spec:
     ports:
       - containerPort: 27022
     volumeMounts:
-      - name: mongo-storage
+      - name: mongo-storage-distributed
         mountPath: /data/db
-  - name: mongodb-sidecar
+  - name: mongodb-sidecar-distributed
     image: cvallance/mongo-k8s-sidecar
     env:
       - name: KUBE_NAMESPACE
@@ -56,55 +26,17 @@ spec:
           fieldRef:
             fieldPath: metadata.namespace
       - name: MONGO_SIDECAR_POD_LABELS
-        value: "database=mongodb,replica-set=syncedrobmem,team-color={{ team.color|lower }}"
+        value: "app=fawkes,team-color={{ team.color|lower }}"
       - name: MONGO_PORT
         value: "27022"
-
-  volumes:
-    - name: mongo-storage
-      emptyDir: {}
-
-  imagePullSecrets:
-    - name: regsecret
-  restartPolicy: Never
----
-# Headless service for local MongoDB for Robot Memory
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ robot.pod_name|replace("robot-", "mongodb-") }}-local
-  namespace: {{ namespace }}
-spec:
-  selector:
-    robot: {{ robot.name }}
-    team-color: {{ team.color|lower }}
-    database: mongodb
-    replica-set: localrobmem
-  clusterIP: None
-  ports:
-  - port: 1
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: {{ robot.pod_name|replace("robot-", "mongodb-") }}-local
-  namespace: {{ namespace }}
-  labels:
-    robot: {{ robot.name }}
-    team-color: {{ team.color|lower }}
-    database: mongodb
-    replica-set: localrobmem
-spec:
-  tolerations:
-  - key: exclusive
-    value: rcll-sim
-  containers:
-  - name: mongodb-sync
+  - name: mongodb-sync-local
     image: mongo
     command:
       - mongod
       - "--replSet"
-      - syncedrobmem
+      - robot-memory-local
+      - "--bind_ip"
+      - "0.0.0.0"
       - "--smallfiles"
       - "--noprealloc"
       - "--port"
@@ -112,9 +44,9 @@ spec:
     ports:
       - containerPort: 27021
     volumeMounts:
-      - name: mongo-storage
+      - name: mongo-storage-local
         mountPath: /data/db
-  - name: mongodb-sidecar
+  - name: mongodb-sidecar-local
     image: cvallance/mongo-k8s-sidecar
     env:
       - name: KUBE_NAMESPACE
@@ -122,15 +54,16 @@ spec:
           fieldRef:
             fieldPath: metadata.namespace
       - name: MONGO_SIDECAR_POD_LABELS
-        value: "database=mongodb,robot={{ robot.name }},replica-set=localrobmem,team-color={{ team.color|lower }}"
+        value: "app=fawkes,robot={{ robot.name }},team-color={{ team.color|lower }}"
       - name: MONGO_PORT
         value: "27021"
+{% endblock %}
 
+
+{% block volumes %}
   volumes:
-    - name: mongo-storage
+    - name: mongo-storage-distributed
       emptyDir: {}
-
-  imagePullSecrets:
-    - name: regsecret
-  restartPolicy: Never
+    - name: mongo-storage-local
+      emptyDir: {}
 {% endblock %}
