@@ -134,3 +134,12 @@ class JobGenerator(object):
 				if self.debug: pprint(update)
 				self.wq.update_item(jobname, update)
 
+	def cancel_jobs(self, tournament_name, only_pending = True):
+		update = {"$set": { "status.state": "cancelled",
+		                    "status.cancelled": datetime.datetime.utcnow()}}
+		for i in self.wq.get_items(JobGenerator.id_regex(tournament_name)):
+			if i['status']['state'] != 'cancelled' and \
+			   (not only_pending or i['status']['state'] == 'pending'):
+				print("Cancelling %s" % i['name'])
+				if not self.dry_run:
+					self.wq.update_item(i['name'], update)
