@@ -26,21 +26,21 @@ spec:
     name: http
   selector:
     app: gzweb
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: gzweb-ws
-  namespace: {{ namespace }}
-spec:
-  type: NodePort
-  ports:
-  - port: 7681
-    targetPort: 7681
-    protocol: TCP
-    name: http
-  selector:
-    app: gzweb
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: gzweb-ws
+#  namespace: {{ namespace }}
+#spec:
+#  type: NodePort
+#  ports:
+#  - port: 7681
+#    targetPort: 7681
+#    protocol: TCP
+#    name: http
+#  selector:
+#    app: gzweb
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -58,10 +58,10 @@ spec:
         backend:
           serviceName: gzweb
           servicePort: 8080
-      - path: /ws
-        backend:
-          serviceName: gzweb-ws
-          servicePort: 7681
+#      - path: /ws
+#        backend:
+#          serviceName: gzweb-ws
+#          servicePort: 7681
 ---
 apiVersion: v1
 kind: Pod
@@ -91,12 +91,14 @@ spec:
       env:
       - name: GAZEBO_MASTER_URI
         value: http://gazebo:11345
-      - name: GZWEB_WS_URL_PORT_SUBST
-        value: /ws
+      - name: GZWEB_USE_HTTPS
+        value: "true"
+      #- name: GZWEB_WS_URL_PORT_SUBST
+      #  value: /ws
       command: ["/opt/gzweb/run-gzweb"]
       ports:
         - containerPort: 8080
-        - containerPort: 7681
+#        - containerPort: 7681
       resources:
         requests:
           memory: "400Mi"
