@@ -10,8 +10,8 @@ import jinja2
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Job')
-	parser.add_argument('--tournament', metavar='T', required=True,
-	                    help='Regular expression to determine jobs')
+	parser.add_argument('--tournament', metavar='TOURNAMENT', required=True,
+	                    help='Tournament to cancel jobs of.')
 	parser.add_argument('--not-only-pending', dest='only_pending',
 	                    action='store_false', default = True,
 	                    help='Cancel all jobs, not only pending ones.')

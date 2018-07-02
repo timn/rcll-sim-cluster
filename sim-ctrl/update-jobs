@@ -10,8 +10,8 @@ import jinja2
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Job')
-	parser.add_argument('--jobs-regex', metavar='REGEX', required=True,
-	                    help='Regular expression to determine jobs')
+	parser.add_argument('--tournament', metavar='TOURNAMENT', required=True,
+	                    help='Tournament to cancel jobs of.')
 	parser.add_argument('--template', metavar='FILENAME',
 	                    default='/opt/rcll-sim-ctrl/templates/game.yaml.j2',
 	                    help='Template file for job parameters.')
@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 	try:
 		jobgen = JobGenerator(args.template, args.debug, dry_run=args.dry_run)
-		jobgen.update_params(args.jobs_regex, print_diffs=args.print_diffs)
+		jobgen.update_params(JobGenerator.id_regex(args.tournament), print_diffs=args.print_diffs)
 
 	except:
 		print("\nFailed to generate job")
