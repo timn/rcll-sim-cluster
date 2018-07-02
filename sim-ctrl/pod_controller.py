@@ -298,8 +298,7 @@ class PodController(object):
 					if dl_progress:
 						sys.stdout.write("\n")
 					else:
-						sys.stdout.write("\r    - %-30s %27s %23s\n" %
-						                 (container, "", humanize.naturalsize(dl, binary=True)))
+						sys.stdout.write(" %40s\n" % (humanize.naturalsize(dl, binary=True)))
 
 	def delete_all(self):
 		# We must pass a new default API client to avoid urllib conn pool warnings
