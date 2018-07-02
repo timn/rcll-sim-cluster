@@ -12,6 +12,9 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Create RCLL Cluster Sim Job')
 	parser.add_argument('--tournament', metavar='TOURNAMENT', required=True,
 	                    help='Tournament to cancel jobs of.')
+	parser.add_argument('--not-only-pending', dest='only_pending',
+	                    action='store_false', default = True,
+	                    help='Update all jobs, not only pending ones.')
 	parser.add_argument('--template', metavar='FILENAME',
 	                    default='/opt/rcll-sim-ctrl/templates/game.yaml.j2',
 	                    help='Template file for job parameters.')
@@ -28,7 +31,9 @@ if __name__ == '__main__':
 
 	try:
 		jobgen = JobGenerator(args.template, args.debug, dry_run=args.dry_run)
-		jobgen.update_params(JobGenerator.id_regex(args.tournament), print_diffs=args.print_diffs)
+		jobgen.update_params(args.tournament,
+		                     print_diffs=args.print_diffs,
+							 only_pending=args.only_pending)
 
 	except:
 		print("\nFailed to generate job")

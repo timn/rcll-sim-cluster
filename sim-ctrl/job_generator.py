@@ -105,8 +105,10 @@ class JobGenerator(object):
 		self.store(jobname, idnum, params)
 		return (jobname, idnum, params)
 
-	def update_params(self, name_regex, print_diffs=False):
-		for i in self.wq.get_items(name_regex):
+	def update_params(self, tournament_name, print_diffs=False, only_pending=True):
+		for i in self.wq.get_items(JobGenerator.id_regex(tournament_name)):
+			if only_pending and i['status']['state'] != 'pending': continue
+
 			job_parts = i['name'].split(':')
 			teams = job_parts[2].split("-vs-")
 			(jobname, idnum, params) = \
