@@ -14,7 +14,7 @@ RUN \
 
 RUN mkdir -p /opt/rcll-sim-ctrl
 COPY *.py run-sim-jobs create-sim-job create-tournament get-logs \
-		 print-job-info print-results update-jobs Dockerfile /opt/rcll-sim-ctrl/
+		 print-job-info print-results update-jobs cancel-jobs Dockerfile /opt/rcll-sim-ctrl/
 RUN bash -c "cd /bin; \
 		for f in \$(find /opt/rcll-sim-ctrl/ -executable -type f ! -iname '*~'); do ln -s \$f; done; \
 		"
